@@ -1,15 +1,100 @@
 # Urban OpenGen
 
-Formerly Urban OpenGAN. The name changed when the inpainter became a diffusion model;
-the local folders (`gan_project`, `C:\opengan`) keep their old names on purpose.
+Open generative models of urban morphology, trained on sixty cities across every
+continent. Open code, open data, open weights, and everything here runs on one consumer
+GPU.
 
-An open, generative model of urban morphology. It learns what 400 m × 400 m pieces of
-sixty cities look like as buildings, heights, streets and greenery, and lets you walk its
-latent space with sliders, blend one city's fabric into another's, and, once the metric
-directions are fitted, ask for a block with a given FAR, coverage or share of green and
-see it appear in 3D.
+There are two models.
 
-Everything in this repository is reproducible on one consumer GPU.
+**The inpainter** takes a real place with an area cut out of it and fills that area with
+streets, blocks and buildings that continue the fabric around them. Type an address, draw
+a shape, optionally ask for a floor area ratio or a share of green, and it rebuilds the
+site in 3D. It is a conditional diffusion model, 23.2 million parameters, trained from
+scratch, and it carries no city label: the surroundings are the style, which is why it
+works on cities it was never trained on.
+
+**The generator** draws a whole 400 m × 400 m tile out of nothing, conditioned on which of
+the sixty cities it should resemble, with sliders that move real measured quantities:
+floor area ratio, coverage, green share, street share. You can blend Barcelona into Tokyo
+and watch the fabric change continuously. It is StyleGAN2-ADA.
+
+Neither one outputs a picture. Every tile is four channels, building footprint, building
+height in metres, street and green, so anything the models make can be measured, traced
+into polygons, exported as GeoJSON or a Rhino `.3dm`, and analysed for sun hours and
+views. That is the point of the project: a design instrument rather than an image
+generator.
+
+---
+
+## Try it
+
+You need Python 3.10 or newer and, realistically, an NVIDIA GPU. Both models run on CPU
+but slowly.
+
+```
+git clone https://github.com/differential-studio/urban-opengen
+cd urban-opengen
+pip install -r requirements.txt
+```
+
+If pip gives you a CPU-only PyTorch, install the CUDA build for your machine from
+pytorch.org first, then re-run the line above.
+
+### The inpainter, which is the quickest thing to see working
+
+Download the inpainter checkpoint from `DOWNLOADS.md`, then:
+
+```
+python phase4\serve.py --lut assets\height_lut.json --cities assets\cities.json ^
+    --inpaint <path to>\latest.pt --osm-contact you@example.com
+```
+
+Open http://127.0.0.1:5000, type an address, draw a shape over part of it, and generate.
+The site loads live from OpenStreetMap, so put a real email in `--osm-contact`: their
+usage policy asks for a way to reach whoever is making the requests.
+
+Nothing else is needed for this. No NVIDIA repository, no dataset, no training.
+
+### The generator
+
+This one runs inside NVIDIA's stylegan3 code, which we cannot redistribute, so you clone
+it yourself and patch it:
+
+```
+git clone https://github.com/NVlabs/stylegan3
+python phase1\apply_patches.py stylegan3
+```
+
+Download the generator snapshot from `DOWNLOADS.md`, then:
+
+```
+python phase4\serve.py --repo stylegan3 --network <path to>\network-snapshot-003000.pkl ^
+    --lut assets\height_lut.json --cities assets\cities.json --directions assets\directions.npz
+```
+
+Add `--inpaint <path to>\latest.pt` to the same command to have both models in one page.
+
+The three files in `assets/` are not weights. They are the height lookup table, the city
+label order and the fitted slider directions, 72 KB in total, the same for every
+snapshot, which is why they are in the repository rather than in the downloads.
+
+---
+
+## What to expect
+
+This is a research build, trained by two people on a single laptop GPU, and it is honest
+about where it falls short.
+
+| | |
+|---|---|
+| **Resolution** | A tile is 400 m across 128 pixels, about 3 m per pixel, so a typical building is three to five pixels wide. The fabric is coarse and buildings merge into their neighbours. This is the main limitation and more resolution is the main fix. |
+| **Grain** | Measured against real tiles the models draw two thirds the buildings at one and a half times the footprint, and half the blocks. Area shares (density, coverage, street, height) come out within 0.15 standard deviations of the real corpus; the fine structure does not. Full numbers in section 7. |
+| **Slider strength** | Coverage and street share are reliable. Mean height and green share are weaker. `assets/directions.csv` gives the R² of every one, and the viewer shows it as a dot beside each slider. |
+| **Height data** | In cities where OpenStreetMap carries no height tags, most buildings sit at a 7 m default, so the model learns those cities as flat. Named and quantified in section 1. |
+| **Not a daylight tool** | The analysis in `phase7/` computes direct sun and view exactly for the massing it is given, with no diffuse light, reflection, glazing or material. It is for comparing schemes, not for a report. |
+
+Read the Lessons in section 3 before training anything. Three runs failed in instructive
+ways and the current encoding is the result.
 
 ---
 
@@ -42,37 +127,26 @@ that nobody has to repeat them.
 
 ---
 
-## What it does today
+## What is in here
 
-| piece | status |
+| you want to | go to |
 |---|---|
-| Tile dataset v1: 60 cities, 30,519 usable 400 m tiles at 100 px, 4-channel signed-distance encoding | done, superseded by v2 |
-| OSM rasteriser: any address to the same tiles in Python, whole-city rasters, resumable 60-city batch, per-city audit | done |
-| Tile dataset v2: the same 60 cities re-rendered from OpenStreetMap by our own code, 625 tiles each at 128 px and 3.125 m per pixel, 37,500 tiles, 30,957 with built content | done |
-| Dataset v3 city list: 120 cities, 20 per continent, chosen by fabric type | list done, fetch pending |
-| StyleGAN2-ADA training, city-conditional, patched for 4 channels and geometry-only augmentation | done, 3000 kimg, snapshot 3000 in use |
-| Metric extraction: coverage, FAR, heights, street length, intersections, blocks, and more, on real and generated tiles alike | done |
-| Post-hoc latent directions per metric (sliders, and absolute targets solved with a Jacobian) | done |
-| Three.js viewer with latent, PCA, city-blend and metric sliders, voxel, clean, regularised and fitted-vector renderings, real reference tiles, mask-and-rebuild inpainting | done |
-| Raster to vector: fitted building polygons with heights, street centrelines with widths, blocks and greens from any tile, exported as GeoJSON or as a Rhino .3dm with building solids on layers (`phase4/vectorize.py`) | done |
-| Analysis of an option: direct sun on the ground, the street and the walls at the tile's own latitude, and what each wall looks at, plus the density and envelope numbers (`phase7/analysis.py`) | done |
-| Design space: a full-factorial grid over the sliders, one Rhino model and one row of parameters and objectives per option, for the multiobjective viewer (`phase7/explore.py`) | done |
-| Evaluation: generated metric distributions against the real corpus, per snapshot, with per-city conditioning error | done, findings below |
-| The film (`phase5/`): cities, tiles, channels, GAN training, processed geometry, sliders, the inpainter and its sampling, open-source outro | done |
-| Conditional diffusion inpainter: fills any region at any scale, steered by FAR, coverage, green, street, height and grain targets; canvases larger than a tile | trained, 23.2 M parameters, 300 to 800 m windows |
-| Static browser demo with the generator exported to ONNX | planned |
+| run the app on a trained model | `phase4/`, and `DOWNLOADS.md` for the weights |
+| build the tile dataset, for our sixty cities or your own | `phase0/` |
+| train the GAN, then find out whether it is any good | `phase1/`, then `phase3/` |
+| train or sample the diffusion inpainter | `phase6/` |
+| measure an option: sun, views, density, the design space | `phase7/` |
 
-Read the "Lessons" section before training: three runs failed in instructive ways and the
-current encoding is the result.
-
----
-
-## Repository layout
+The folders are numbered by the order we built them, which is not the order you need them.
+There is no `phase2/` and no `phase5/` here: phase 2 is the slider fitting, which lives in
+`phase1/` because it runs against the training repo, and phase 5 is the film, which is a
+communication piece rather than a tool and is not published. Every folder has its own
+README with the commands for that step. The full layout:
 
 ```
-gan_project/
-├── images/                 raw tiles, one folder per city, CityName_0.png .. CityName_624.png
-├── phase0/                 data audit and re-encoding (numpy, pillow, scipy only)
+urban-opengen/
+├── images/                 not in the repository: where the raw tiles go, one folder per city
+├── phase0/                 data: audit, encoding, metrics and the OpenStreetMap renderer
 │   ├── tile_codec.py       the tile format: palette, height mapping, encodings, metrics
 │   ├── reencode_tiles.py   builds tiles.npz from the raw tiles
 │   ├── osm_tiles.py        renders tiles straight from OpenStreetMap, for any place
@@ -83,18 +157,17 @@ gan_project/
 │   ├── audit_tiles.py      raw-tile audit of the Grasshopper set (blanks, grey histogram, palette)
 │   ├── audit_osm.py        per-city audit of rendered OSM tiles: coverage, missing buildings, missing heights
 │   └── README.md
-├── phase1/                 training and slider fitting
+├── phase1/                 training: StyleGAN2-ADA, and the slider fitting (that is phase 2)
 │   ├── apply_patches.py    patches a fresh NVlabs stylegan3 clone
 │   ├── npz_dataset.py      dataset class installed by the patch
 │   ├── fit_directions.py   Phase 2: sample, measure, regress w -> metric
 │   ├── fix_build.py        finds compiler flags for the CUDA kernels (Windows)
 │   ├── diagnose_build.py   verbose build log
 │   └── README.md
-├── phase3/                 evaluation
+├── phase3/                 evaluation: generated tiles against the real corpus
 │   ├── evaluate.py         generated metric distributions vs the real corpus
 │   └── README.md
-├── phase5/                 the film (internal, not in the public repository)
-├── phase6/                 the diffusion inpainter
+├── phase6/                 the inpainter: the conditional diffusion model
 │   ├── prepare.py          city rasters to a per-city field cache
 │   ├── data.py             scale-aware crops, hole masks, hole metrics, on the GPU
 │   ├── unet.py             conditional UNet, no diffusion library
@@ -102,13 +175,13 @@ gan_project/
 │   ├── train.py            training loop with resume, warm start, previews
 │   ├── sample.py           inpaint a region of a real city
 │   └── README.md
-├── phase7/                 analysis and the design space
+├── phase7/                 analysis: sun, views, density, and the design space
 │   ├── analysis.py         direct sun, views from the walls, density and envelope, with a self-test
 │   ├── explore.py          the grid, one model and one row per option, in the viewer's shape
 │   ├── validate_fit.py     the same questions asked of the raw raster, to size what the fit changes
 │   ├── draw.py             plan, ground sun, wall sun and sky view, side by side
 │   └── README.md
-├── phase4/                 viewer
+├── phase4/                 the app: viewer and inference server
 │   ├── serve.py            Flask inference server
 │   ├── index.html          the page, vanilla JS + Three.js
 │   ├── regular.js          the Clean and Regular geometry modes, in the browser
@@ -126,9 +199,8 @@ gan_project/
 └── README.md               this file
 ```
 
-The phases are numbered by the technical plan: 0 data, 1 model, 2 sliders, 3 evaluation,
-4 UI, 5 the film, 6 the inpainter, 7 analysis. Phase 2 lives in `phase1/` because it
-runs against the training repo.
+The numbers are the technical plan's and the names stayed because the scripts find each
+other by folder name.
 
 ---
 
@@ -760,14 +832,17 @@ detail.
 
 ## Requirements
 
-* Python 3.10 or newer (3.14 confirmed)
-* `numpy`, `pillow`, `scipy` for Phase 0; `requests`, `shapely`, `pyproj` for the OSM rasteriser
-* `pandas` for the evaluation
-* PyTorch with CUDA, plus `click requests tqdm psutil imageio packaging ninja` for training
-* `flask` for the viewer, `rhino3dm` for its 3dm export
-* nothing extra for phase 7: numpy, scipy, shapely and pillow, which phase 0 already needs
-* A GPU with 8 GB or more for 128 px training; the whole pipeline also runs on CPU at
-  32 px for testing
+`requirements.txt` covers everything in one line of pip. What it is for, in case you want
+to install by hand:
+
+* Python 3.10 or newer, tested to 3.14
+* `numpy`, `pillow`, `scipy` for the tile codec; `requests` and `shapely` for the
+  OpenStreetMap rasteriser; `pandas` for the evaluation
+* PyTorch with CUDA for either model, plus `click tqdm psutil imageio packaging ninja`
+  for training the GAN inside stylegan3
+* `flask` for the viewer, `rhino3dm` only if you want the `.3dm` export
+* A GPU with 8 GB or more to train at 128 px. Running the trained models needs much less,
+  and the whole pipeline also runs on CPU at 32 px for testing.
 
 ---
 
@@ -801,8 +876,9 @@ one.
 
 Open source, with credit required everywhere. The parts are different kinds of work and
 carry the licence that fits each; `LICENSE.md` is the map, the licence files govern, and
-`RELEASE.md` says what is in the public repository (the pipeline and the configurator) and
-what stays internal (the film, the v1 tiles, the archive).
+`RELEASE.md` says what is in the public repository (the pipeline and the configurator),
+what comes as a download (the weights and both datasets) and what is not published (the
+film and the archive).
 
 | part | licence |
 |---|---|
@@ -810,7 +886,7 @@ what stays internal (the film, the v1 tiles, the archive).
 | diffusion inpainter weights | CC BY 4.0 (`LICENSE-MODELS.md`) |
 | GAN generator weights | non-commercial research use only, because they were trained with NVIDIA's StyleGAN2-ADA code under the NVIDIA Source Code License (`LICENSE-MODELS.md`) |
 | dataset v2, rendered from OpenStreetMap | ODbL 1.0, © OpenStreetMap contributors (`LICENSE-DATA.md`) |
-| dataset v1, the Grasshopper tiles | not released until its source datasets are documented |
+| dataset v1, the Grasshopper tiles | ODbL 1.0, © OpenStreetMap contributors (`LICENSE-DATA.md`) |
 
 Credit line, for anything built on or shown from this work:
 
