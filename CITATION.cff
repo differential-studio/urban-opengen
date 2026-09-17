@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use Urban OpenGen, please cite it and credit Differential."
+title: "Urban OpenGen: open generative models of urban morphology"
+type: software
+authors:
+  - name: "Differential"
+    website: "https://differential.studio"
+  - family-names: "Klushinsky"
+    given-names: "Piotr"
+    affiliation: "Differential"
+version: "0.1.0"
+date-released: "2026-09-11"
+license: "Apache-2.0"
+repository-code: "https://github.com/differential-studio/urban-opengen"
+keywords:
+  - urban morphology
+  - generative models
+  - StyleGAN2-ADA
+  - diffusion
+  - inpainting
+  - OpenStreetMap
+abstract: >-
+  Generative models of urban morphology trained on 400 m tiles of sixty cities rendered from
+  OpenStreetMap: a class-conditional StyleGAN2-ADA with fitted metric directions for
+  interactive control, and a conditional diffusion inpainter that fills a drawn region at any
+  scale, steered by coverage, floor area ratio, green share, street share, height and grain.
+  Code Apache-2.0, inpainter weights CC BY 4.0, data ODbL.

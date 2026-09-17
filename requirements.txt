@@ -1,0 +1,29 @@
+# Urban OpenGen. Python 3.10 or newer.
+#
+# The pipeline is deliberately thin. phase0 needs only numpy, Pillow, SciPy and requests;
+# everything heavier is optional and only for the part that uses it.
+
+# --- core: the tile codec, the OpenStreetMap renderer, the audits (phase0) ---
+numpy>=1.24
+Pillow>=10.0
+scipy>=1.10
+requests>=2.31
+
+# --- the models (phase1 training, phase6 inpainter) ---
+# Install the build that matches your CUDA version from pytorch.org rather than taking
+# the default wheel. The inpainter trains on 8 GB; it also runs on CPU, slowly.
+torch>=2.1
+
+# --- the configurator server (phase4) ---
+flask>=3.0
+
+# --- geometry export: fitted polygons and the Rhino .3dm writer (phase4/vectorize.py, phase7) ---
+shapely>=2.0
+rhino3dm>=8.0
+
+# --- evaluation plots (phase3) ---
+matplotlib>=3.7
+
+# The GAN generator additionally needs a clone of NVlabs/stylegan3, which we do not
+# redistribute. See phase1/README.md and NOTICE: it carries NVIDIA's own licence and is
+# non-commercial research use only.

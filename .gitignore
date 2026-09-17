@@ -1,0 +1,48 @@
+# --- weights, caches and data: everything here is a download, not a commit ---
+*.pt
+*.pkl
+*.npz
+# one exception: the fitted slider directions are 62 KB and the viewer needs them
+!assets/directions.npz
+*.npy
+*.pth
+cache*/
+runs*/
+images/
+images_v2/
+dataset*/
+inpaint/
+eval/
+
+# --- generated outputs ---
+phase4/osm_cache/
+phase4/exports/
+phase5/data/
+phase5/assets/
+out/
+*.3dm
+*.webm
+*.mp4
+*.srt
+
+# --- the film is not part of the public repository ---
+phase5/
+
+# --- python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# --- editors and os ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- secrets: never commit an API key or an ion token ---
+.env
+*.token
+secrets.json

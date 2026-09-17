@@ -1,0 +1,40 @@
+Urban OpenGen
+Copyright 2026 Differential Sp. z o.o. (differential.studio)
+
+This product includes software developed by Differential for the Urban OpenGen project,
+https://github.com/differential-studio/urban-opengen, licensed under the Apache License,
+Version 2.0. Credit "Urban OpenGen by Differential" in any copy or derivative.
+
+Third-party components:
+
+  three.js (phase4/vendor/three.module.js, OrbitControls.js, BufferGeometryUtils.js)
+    Copyright 2010-2024 three.js authors. MIT License. The last two are from the three.js
+    examples and carry the same licence. Full text in phase4/vendor/THREE-LICENSE.
+
+  Leaflet (phase4/vendor/leaflet)
+    Copyright 2010-2024 Volodymyr Agafonkin, 2010-2011 CloudMade. BSD 2-Clause License.
+    Full text in phase4/vendor/LEAFLET-LICENSE. Used by the map app in Archive/, not by
+    the published viewer; drop the folder if the archived app is not shipped.
+
+  Leaflet.draw (phase4/vendor/leaflet-draw)
+    Copyright 2012-2017 Jacob Toye and Leaflet. MIT License. Full text in
+    phase4/vendor/LEAFLET-DRAW-LICENSE. Same note as above.
+
+  NVIDIA StyleGAN3 / StyleGAN2-ADA (https://github.com/NVlabs/stylegan3)
+    Not redistributed. phase1/apply_patches.py modifies a clone the user obtains under
+    the NVIDIA Source Code License for StyleGAN3, which permits non-commercial research
+    use only. GAN weights trained with it are released on those terms, see
+    LICENSE-MODELS.md.
+
+  OpenStreetMap data (dataset v2)
+    © OpenStreetMap contributors, Open Database License 1.0. See LICENSE-DATA.md.
+
+  OpenStreetMap services
+    The renderer reads the Overpass API and the viewer geocodes with Nominatim, both
+    operated by the OpenStreetMap Foundation. Requests carry a User-Agent with a contact
+    address as their usage policies require; set yours with the server's --contact flag.
+
+  OpenAI text to speech (film only, not in this repository)
+    The narration of the project film is a synthetic voice generated with OpenAI's
+    text-to-speech API. OpenAI require this to be disclosed to listeners, and it is
+    disclosed in the film's closing credits.
