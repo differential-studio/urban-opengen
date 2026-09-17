@@ -1,0 +1,842 @@
+[
+ {
+  "city": "Marrakesh",
+  "lat": 31.6295,
+  "lon": -7.9811,
+  "continent": "Africa",
+  "fabric": "medina, dense courtyard fabric"
+ },
+ {
+  "city": "Fez",
+  "lat": 34.0181,
+  "lon": -5.0078,
+  "continent": "Africa",
+  "fabric": "densest surviving medina, no vehicle grid"
+ },
+ {
+  "city": "Tunis",
+  "lat": 36.8065,
+  "lon": 10.1815,
+  "continent": "Africa",
+  "fabric": "medina against French ville nouvelle grid"
+ },
+ {
+  "city": "Algiers",
+  "lat": 36.7538,
+  "lon": 3.0588,
+  "continent": "Africa",
+  "fabric": "casbah against Haussmann seafront"
+ },
+ {
+  "city": "Casablanca",
+  "lat": 33.5731,
+  "lon": -7.5898,
+  "continent": "Africa",
+  "fabric": "art deco and modernist blocks"
+ },
+ {
+  "city": "Accra",
+  "lat": 5.6037,
+  "lon": -0.187,
+  "continent": "Africa",
+  "fabric": "low-rise organic, compound houses"
+ },
+ {
+  "city": "Nairobi",
+  "lat": -1.2864,
+  "lon": 36.8172,
+  "continent": "Africa",
+  "fabric": "colonial core, informal settlement edge"
+ },
+ {
+  "city": "Kampala",
+  "lat": 0.3476,
+  "lon": 32.5825,
+  "continent": "Africa",
+  "fabric": "hill city, organic"
+ },
+ {
+  "city": "Dakar",
+  "lat": 14.7167,
+  "lon": -17.4677,
+  "continent": "Africa",
+  "fabric": "Plateau colonial grid on a peninsula"
+ },
+ {
+  "city": "Bamako",
+  "lat": 12.6392,
+  "lon": -8.0029,
+  "continent": "Africa",
+  "fabric": "river city, low-rise compound"
+ },
+ {
+  "city": "Ouagadougou",
+  "lat": 12.3714,
+  "lon": -1.5197,
+  "continent": "Africa",
+  "fabric": "extreme low-rise regular grid"
+ },
+ {
+  "city": "Kano",
+  "lat": 12.0022,
+  "lon": 8.592,
+  "continent": "Africa",
+  "fabric": "old walled Hausa city"
+ },
+ {
+  "city": "Ibadan",
+  "lat": 7.3775,
+  "lon": 3.947,
+  "continent": "Africa",
+  "fabric": "organic Yoruba fabric, very fine grain"
+ },
+ {
+  "city": "Douala",
+  "lat": 4.0511,
+  "lon": 9.7679,
+  "continent": "Africa",
+  "fabric": "port, mixed colonial and informal"
+ },
+ {
+  "city": "Abuja",
+  "lat": 9.0765,
+  "lon": 7.3986,
+  "continent": "Africa",
+  "fabric": "planned modernist capital"
+ },
+ {
+  "city": "Cape_Town",
+  "lat": -33.9249,
+  "lon": 18.4241,
+  "continent": "Africa",
+  "fabric": "grid core, apartheid-era periphery"
+ },
+ {
+  "city": "Durban",
+  "lat": -29.8587,
+  "lon": 31.0218,
+  "continent": "Africa",
+  "fabric": "coastal, mixed density"
+ },
+ {
+  "city": "Maputo",
+  "lat": -25.9692,
+  "lon": 32.5732,
+  "continent": "Africa",
+  "fabric": "Portuguese cement city and reed city"
+ },
+ {
+  "city": "Harare",
+  "lat": -17.8292,
+  "lon": 31.0522,
+  "continent": "Africa",
+  "fabric": "wide colonial grid, low coverage"
+ },
+ {
+  "city": "Antananarivo",
+  "lat": -18.8792,
+  "lon": 47.5079,
+  "continent": "Africa",
+  "fabric": "hill city, terraced fine grain"
+ },
+ {
+  "city": "Kyoto",
+  "lat": 35.0116,
+  "lon": 135.7681,
+  "continent": "Asia",
+  "fabric": "Heian grid, machiya fine grain"
+ },
+ {
+  "city": "Fukuoka",
+  "lat": 33.5904,
+  "lon": 130.4017,
+  "continent": "Asia",
+  "fabric": "mid-size Japanese block"
+ },
+ {
+  "city": "Nagoya",
+  "lat": 35.1815,
+  "lon": 136.9066,
+  "continent": "Asia",
+  "fabric": "postwar reconstruction superblock"
+ },
+ {
+  "city": "Seoul",
+  "lat": 37.5665,
+  "lon": 126.978,
+  "continent": "Asia",
+  "fabric": "hillside fine grain plus tower estates"
+ },
+ {
+  "city": "Busan",
+  "lat": 35.1796,
+  "lon": 129.0756,
+  "continent": "Asia",
+  "fabric": "extreme terrain, layered density"
+ },
+ {
+  "city": "Taipei",
+  "lat": 25.033,
+  "lon": 121.5654,
+  "continent": "Asia",
+  "fabric": "arcade street block, uniform depth"
+ },
+ {
+  "city": "Hong_Kong",
+  "lat": 22.3193,
+  "lon": 114.1694,
+  "continent": "Asia",
+  "fabric": "highest density, podium and tower"
+ },
+ {
+  "city": "Singapore",
+  "lat": 1.3521,
+  "lon": 103.8198,
+  "continent": "Asia",
+  "fabric": "planned estates, shophouse core"
+ },
+ {
+  "city": "Bangkok",
+  "lat": 13.7563,
+  "lon": 100.5018,
+  "continent": "Asia",
+  "fabric": "soi network, deep interior blocks"
+ },
+ {
+  "city": "Ho_Chi_Minh_City",
+  "lat": 10.8231,
+  "lon": 106.6297,
+  "continent": "Asia",
+  "fabric": "tube houses, colonial boulevards"
+ },
+ {
+  "city": "Hanoi",
+  "lat": 21.0285,
+  "lon": 105.8542,
+  "continent": "Asia",
+  "fabric": "Old Quarter, extremely narrow parcels"
+ },
+ {
+  "city": "Chennai",
+  "lat": 13.0827,
+  "lon": 80.2707,
+  "continent": "Asia",
+  "fabric": "colonial grid and dense agraharam"
+ },
+ {
+  "city": "Ahmedabad",
+  "lat": 23.0225,
+  "lon": 72.5714,
+  "continent": "Asia",
+  "fabric": "pols, introverted cluster fabric"
+ },
+ {
+  "city": "Kolkata",
+  "lat": 22.5726,
+  "lon": 88.3639,
+  "continent": "Asia",
+  "fabric": "colonial core, very fine bustee grain"
+ },
+ {
+  "city": "Lahore",
+  "lat": 31.5204,
+  "lon": 74.3587,
+  "continent": "Asia",
+  "fabric": "walled city and Mughal garden grid"
+ },
+ {
+  "city": "Tehran",
+  "lat": 35.6892,
+  "lon": 51.389,
+  "continent": "Asia",
+  "fabric": "north-south slope, courtyard to tower"
+ },
+ {
+  "city": "Dubai",
+  "lat": 25.2048,
+  "lon": 55.2708,
+  "continent": "Asia",
+  "fabric": "superblock, arterial spacing"
+ },
+ {
+  "city": "Riyadh",
+  "lat": 24.7136,
+  "lon": 46.6753,
+  "continent": "Asia",
+  "fabric": "2 km superblock grid, villa fabric"
+ },
+ {
+  "city": "Tashkent",
+  "lat": 41.2995,
+  "lon": 69.2401,
+  "continent": "Asia",
+  "fabric": "Soviet microrayon at full scale"
+ },
+ {
+  "city": "Chengdu",
+  "lat": 30.5728,
+  "lon": 104.0668,
+  "continent": "Asia",
+  "fabric": "Chinese gated superblock, ring roads"
+ },
+ {
+  "city": "Prague",
+  "lat": 50.0755,
+  "lon": 14.4378,
+  "continent": "Europe",
+  "fabric": "medieval core, perimeter block belt"
+ },
+ {
+  "city": "Vienna",
+  "lat": 48.2082,
+  "lon": 16.3738,
+  "continent": "Europe",
+  "fabric": "Ringstrasse, Gemeindebau courtyards"
+ },
+ {
+  "city": "Budapest",
+  "lat": 47.4979,
+  "lon": 19.0402,
+  "continent": "Europe",
+  "fabric": "deep courtyard perimeter blocks"
+ },
+ {
+  "city": "Bologna",
+  "lat": 44.4949,
+  "lon": 11.3426,
+  "continent": "Europe",
+  "fabric": "porticoed medieval, radial"
+ },
+ {
+  "city": "Florence",
+  "lat": 43.7696,
+  "lon": 11.2558,
+  "continent": "Europe",
+  "fabric": "Renaissance core, tight grain"
+ },
+ {
+  "city": "Naples",
+  "lat": 40.8518,
+  "lon": 14.2681,
+  "continent": "Europe",
+  "fabric": "densest historic fabric in Europe"
+ },
+ {
+  "city": "Seville",
+  "lat": 37.3891,
+  "lon": -5.9845,
+  "continent": "Europe",
+  "fabric": "Moorish-derived irregular, patios"
+ },
+ {
+  "city": "Lisbon",
+  "lat": 38.7223,
+  "lon": -9.1393,
+  "continent": "Europe",
+  "fabric": "Pombaline grid against hill fabric"
+ },
+ {
+  "city": "Porto",
+  "lat": 41.1579,
+  "lon": -8.6291,
+  "continent": "Europe",
+  "fabric": "narrow deep parcels, steep"
+ },
+ {
+  "city": "Lyon",
+  "lat": 45.764,
+  "lon": 4.8357,
+  "continent": "Europe",
+  "fabric": "traboule blocks, two-river confluence"
+ },
+ {
+  "city": "Marseille",
+  "lat": 43.2965,
+  "lon": 5.3698,
+  "continent": "Europe",
+  "fabric": "port core plus modernist slabs"
+ },
+ {
+  "city": "Amsterdam",
+  "lat": 52.3676,
+  "lon": 4.9041,
+  "continent": "Europe",
+  "fabric": "canal ring, extreme parcel regularity"
+ },
+ {
+  "city": "Copenhagen",
+  "lat": 55.6761,
+  "lon": 12.5683,
+  "continent": "Europe",
+  "fabric": "perimeter block with green courtyards"
+ },
+ {
+  "city": "Stockholm",
+  "lat": 59.3293,
+  "lon": 18.0686,
+  "continent": "Europe",
+  "fabric": "archipelago, Malmgard and functionalism"
+ },
+ {
+  "city": "Helsinki",
+  "lat": 60.1699,
+  "lon": 24.9384,
+  "continent": "Europe",
+  "fabric": "rock terrain, large perimeter blocks"
+ },
+ {
+  "city": "Edinburgh",
+  "lat": 55.9533,
+  "lon": -3.1883,
+  "continent": "Europe",
+  "fabric": "Old Town closes against New Town grid"
+ },
+ {
+  "city": "Dublin",
+  "lat": 53.3498,
+  "lon": -6.2603,
+  "continent": "Europe",
+  "fabric": "Georgian terrace, low-rise field"
+ },
+ {
+  "city": "Krakow",
+  "lat": 50.0647,
+  "lon": 19.945,
+  "continent": "Europe",
+  "fabric": "medieval ring plus Nowa Huta"
+ },
+ {
+  "city": "Kyiv",
+  "lat": 50.4501,
+  "lon": 30.5234,
+  "continent": "Europe",
+  "fabric": "microrayon slabs, ravine terrain"
+ },
+ {
+  "city": "Bucharest",
+  "lat": 44.4268,
+  "lon": 26.1025,
+  "continent": "Europe",
+  "fabric": "Ceausescu boulevards over old fabric"
+ },
+ {
+  "city": "Phoenix",
+  "lat": 33.4484,
+  "lon": -112.074,
+  "continent": "North America",
+  "fabric": "mile grid sprawl, lowest density"
+ },
+ {
+  "city": "Atlanta",
+  "lat": 33.749,
+  "lon": -84.388,
+  "continent": "North America",
+  "fabric": "forest suburb plus tower spine"
+ },
+ {
+  "city": "Denver",
+  "lat": 39.7392,
+  "lon": -104.9903,
+  "continent": "North America",
+  "fabric": "rotated core grid over cardinal grid"
+ },
+ {
+  "city": "Seattle",
+  "lat": 47.6062,
+  "lon": -122.3321,
+  "continent": "North America",
+  "fabric": "terrain-broken grid, mid-rise"
+ },
+ {
+  "city": "San_Francisco",
+  "lat": 37.7749,
+  "lon": -122.4194,
+  "continent": "North America",
+  "fabric": "uniform grid ignoring topography"
+ },
+ {
+  "city": "Boston",
+  "lat": 42.3601,
+  "lon": -71.0589,
+  "continent": "North America",
+  "fabric": "irregular colonial, no grid"
+ },
+ {
+  "city": "New_Orleans",
+  "lat": 29.9511,
+  "lon": -90.0715,
+  "continent": "North America",
+  "fabric": "river-following radial grid"
+ },
+ {
+  "city": "Savannah",
+  "lat": 32.0809,
+  "lon": -81.0912,
+  "continent": "North America",
+  "fabric": "Oglethorpe ward plan, unique type"
+ },
+ {
+  "city": "Minneapolis",
+  "lat": 44.9778,
+  "lon": -93.265,
+  "continent": "North America",
+  "fabric": "lake-broken grid, alley blocks"
+ },
+ {
+  "city": "Detroit",
+  "lat": 42.3314,
+  "lon": -83.0458,
+  "continent": "North America",
+  "fabric": "radial avenues, extreme vacancy"
+ },
+ {
+  "city": "Montreal",
+  "lat": 45.5017,
+  "lon": -73.5673,
+  "continent": "North America",
+  "fabric": "plateau triplex, external stairs"
+ },
+ {
+  "city": "Vancouver",
+  "lat": 49.2827,
+  "lon": -123.1207,
+  "continent": "North America",
+  "fabric": "point tower on townhouse podium"
+ },
+ {
+  "city": "Calgary",
+  "lat": 51.0447,
+  "lon": -114.0719,
+  "continent": "North America",
+  "fabric": "curvilinear suburb, plus-15 core"
+ },
+ {
+  "city": "Quebec_City",
+  "lat": 46.8139,
+  "lon": -71.208,
+  "continent": "North America",
+  "fabric": "walled old town, French parcels"
+ },
+ {
+  "city": "Guadalajara",
+  "lat": 20.6597,
+  "lon": -103.3496,
+  "continent": "North America",
+  "fabric": "colonial grid, courtyard houses"
+ },
+ {
+  "city": "Monterrey",
+  "lat": 25.6866,
+  "lon": -100.3161,
+  "continent": "North America",
+  "fabric": "mountain-constrained industrial grid"
+ },
+ {
+  "city": "Puebla",
+  "lat": 19.0414,
+  "lon": -98.2063,
+  "continent": "North America",
+  "fabric": "Laws of the Indies grid intact"
+ },
+ {
+  "city": "Havana",
+  "lat": 23.1136,
+  "lon": -82.3666,
+  "continent": "North America",
+  "fabric": "colonial core, arcade streets"
+ },
+ {
+  "city": "Guatemala_City",
+  "lat": 14.6349,
+  "lon": -90.5069,
+  "continent": "North America",
+  "fabric": "ravine-divided grid"
+ },
+ {
+  "city": "San_Juan",
+  "lat": 18.4655,
+  "lon": -66.1057,
+  "continent": "North America",
+  "fabric": "walled old town plus Caribbean sprawl"
+ },
+ {
+  "city": "Quito",
+  "lat": -0.1807,
+  "lon": -78.4678,
+  "continent": "South America",
+  "fabric": "long narrow valley, colonial core"
+ },
+ {
+  "city": "Cusco",
+  "lat": -13.5319,
+  "lon": -71.9675,
+  "continent": "South America",
+  "fabric": "Inca walls under colonial grid"
+ },
+ {
+  "city": "Arequipa",
+  "lat": -16.409,
+  "lon": -71.5375,
+  "continent": "South America",
+  "fabric": "sillar stone courtyard grid"
+ },
+ {
+  "city": "Montevideo",
+  "lat": -34.9011,
+  "lon": -56.1645,
+  "continent": "South America",
+  "fabric": "peninsular grid, low-rise"
+ },
+ {
+  "city": "Cordoba_AR",
+  "lat": -31.4201,
+  "lon": -64.1888,
+  "continent": "South America",
+  "fabric": "colonial grid, mid-rise infill"
+ },
+ {
+  "city": "Rosario",
+  "lat": -32.9442,
+  "lon": -60.6505,
+  "continent": "South America",
+  "fabric": "river grid, dense perimeter block"
+ },
+ {
+  "city": "La_Paz",
+  "lat": -16.4897,
+  "lon": -68.1193,
+  "continent": "South America",
+  "fabric": "extreme terrain, canyon city"
+ },
+ {
+  "city": "Medellin",
+  "lat": 6.2442,
+  "lon": -75.5812,
+  "continent": "South America",
+  "fabric": "valley floor grid, hillside informal"
+ },
+ {
+  "city": "Cali",
+  "lat": 3.4516,
+  "lon": -76.532,
+  "continent": "South America",
+  "fabric": "flat grid, wide blocks"
+ },
+ {
+  "city": "Cartagena",
+  "lat": 10.391,
+  "lon": -75.4794,
+  "continent": "South America",
+  "fabric": "walled colonial plus tower strip"
+ },
+ {
+  "city": "Brasilia",
+  "lat": -15.7939,
+  "lon": -47.8828,
+  "continent": "South America",
+  "fabric": "modernist superquadra, essential type"
+ },
+ {
+  "city": "Curitiba",
+  "lat": -25.4284,
+  "lon": -49.2733,
+  "continent": "South America",
+  "fabric": "BRT structural axes shaping density"
+ },
+ {
+  "city": "Salvador",
+  "lat": -12.9777,
+  "lon": -38.5016,
+  "continent": "South America",
+  "fabric": "upper and lower city, steep"
+ },
+ {
+  "city": "Fortaleza",
+  "lat": -3.7319,
+  "lon": -38.5267,
+  "continent": "South America",
+  "fabric": "coastal grid, tower wall"
+ },
+ {
+  "city": "Manaus",
+  "lat": -3.119,
+  "lon": -60.0217,
+  "continent": "South America",
+  "fabric": "river city, organic periphery"
+ },
+ {
+  "city": "Belem",
+  "lat": -1.4558,
+  "lon": -48.4902,
+  "continent": "South America",
+  "fabric": "mango-lined colonial grid"
+ },
+ {
+  "city": "Asuncion",
+  "lat": -25.2637,
+  "lon": -57.5759,
+  "continent": "South America",
+  "fabric": "low-density colonial grid"
+ },
+ {
+  "city": "Guayaquil",
+  "lat": -2.1894,
+  "lon": -79.8891,
+  "continent": "South America",
+  "fabric": "estuary grid plus hill informal"
+ },
+ {
+  "city": "Valparaiso",
+  "lat": -33.0472,
+  "lon": -71.6127,
+  "continent": "South America",
+  "fabric": "amphitheatre hills, no grid"
+ },
+ {
+  "city": "Georgetown",
+  "lat": 6.8013,
+  "lon": -58.1551,
+  "continent": "South America",
+  "fabric": "Dutch canal grid, timber low-rise"
+ },
+ {
+  "city": "Wellington",
+  "lat": -41.2866,
+  "lon": 174.7756,
+  "continent": "Oceania",
+  "fabric": "harbour bowl, constrained CBD"
+ },
+ {
+  "city": "Christchurch",
+  "lat": -43.5321,
+  "lon": 172.6362,
+  "continent": "Oceania",
+  "fabric": "post-quake rebuilt grid"
+ },
+ {
+  "city": "Hamilton_NZ",
+  "lat": -37.787,
+  "lon": 175.2793,
+  "continent": "Oceania",
+  "fabric": "river town, suburban"
+ },
+ {
+  "city": "Dunedin",
+  "lat": -45.8788,
+  "lon": 170.5028,
+  "continent": "Oceania",
+  "fabric": "Scottish octagon plan"
+ },
+ {
+  "city": "Tauranga",
+  "lat": -37.6878,
+  "lon": 176.1651,
+  "continent": "Oceania",
+  "fabric": "coastal low density"
+ },
+ {
+  "city": "Hobart",
+  "lat": -42.8821,
+  "lon": 147.3272,
+  "continent": "Oceania",
+  "fabric": "colonial grid on slope"
+ },
+ {
+  "city": "Darwin",
+  "lat": -12.4634,
+  "lon": 130.8456,
+  "continent": "Oceania",
+  "fabric": "tropical, cyclone-code low-rise"
+ },
+ {
+  "city": "Cairns",
+  "lat": -16.9186,
+  "lon": 145.7781,
+  "continent": "Oceania",
+  "fabric": "tropical grid, low coverage"
+ },
+ {
+  "city": "Townsville",
+  "lat": -19.259,
+  "lon": 146.8169,
+  "continent": "Oceania",
+  "fabric": "wide-street tropical grid"
+ },
+ {
+  "city": "Geelong",
+  "lat": -38.1499,
+  "lon": 144.3617,
+  "continent": "Oceania",
+  "fabric": "regional Victorian grid"
+ },
+ {
+  "city": "Wollongong",
+  "lat": -34.4278,
+  "lon": 150.8931,
+  "continent": "Oceania",
+  "fabric": "escarpment-coast strip"
+ },
+ {
+  "city": "Toowoomba",
+  "lat": -27.5598,
+  "lon": 151.9507,
+  "continent": "Oceania",
+  "fabric": "tableland grid"
+ },
+ {
+  "city": "Ballarat",
+  "lat": -37.5622,
+  "lon": 143.8503,
+  "continent": "Oceania",
+  "fabric": "goldfields grid, very wide streets"
+ },
+ {
+  "city": "Bendigo",
+  "lat": -36.757,
+  "lon": 144.2794,
+  "continent": "Oceania",
+  "fabric": "goldfields radial"
+ },
+ {
+  "city": "Launceston",
+  "lat": -41.4332,
+  "lon": 147.1441,
+  "continent": "Oceania",
+  "fabric": "valley colonial"
+ },
+ {
+  "city": "Sunshine_Coast",
+  "lat": -26.65,
+  "lon": 153.0667,
+  "continent": "Oceania",
+  "fabric": "coastal sprawl, canal estates"
+ },
+ {
+  "city": "Port_Moresby",
+  "lat": -9.4438,
+  "lon": 147.1803,
+  "continent": "Oceania",
+  "fabric": "Melanesian, settlement fabric"
+ },
+ {
+  "city": "Suva",
+  "lat": -18.1416,
+  "lon": 178.4419,
+  "continent": "Oceania",
+  "fabric": "Pacific island capital"
+ },
+ {
+  "city": "Noumea",
+  "lat": -22.2758,
+  "lon": 166.458,
+  "continent": "Oceania",
+  "fabric": "French colonial Pacific"
+ },
+ {
+  "city": "Papeete",
+  "lat": -17.5516,
+  "lon": -149.5585,
+  "continent": "Oceania",
+  "fabric": "lagoon-edge linear"
+ }
+]

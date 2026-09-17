@@ -1,0 +1,302 @@
+[
+ {
+  "city": "Abidjan",
+  "lat": 5.36,
+  "lon": -4.0083
+ },
+ {
+  "city": "Addis_Ababa",
+  "lat": 9.03,
+  "lon": 38.74
+ },
+ {
+  "city": "Adelaide",
+  "lat": -34.9285,
+  "lon": 138.6007
+ },
+ {
+  "city": "Alexandria",
+  "lat": 31.2001,
+  "lon": 29.9187
+ },
+ {
+  "city": "Athens",
+  "lat": 37.9838,
+  "lon": 23.7275
+ },
+ {
+  "city": "Auckland",
+  "lat": -36.8485,
+  "lon": 174.7633
+ },
+ {
+  "city": "Barcelona",
+  "lat": 41.3874,
+  "lon": 2.1686
+ },
+ {
+  "city": "Beijing",
+  "lat": 39.9042,
+  "lon": 116.4074
+ },
+ {
+  "city": "Belo_Horizonte",
+  "lat": -19.9167,
+  "lon": -43.9345
+ },
+ {
+  "city": "Berlin",
+  "lat": 52.52,
+  "lon": 13.405
+ },
+ {
+  "city": "Bogota",
+  "lat": 4.711,
+  "lon": -74.0721
+ },
+ {
+  "city": "Brisbane",
+  "lat": -27.4705,
+  "lon": 153.026
+ },
+ {
+  "city": "Buenos_Aires",
+  "lat": -34.6037,
+  "lon": -58.3816
+ },
+ {
+  "city": "Cairo",
+  "lat": 30.0444,
+  "lon": 31.2357
+ },
+ {
+  "city": "Canberra",
+  "lat": -35.2809,
+  "lon": 149.13
+ },
+ {
+  "city": "Caracas",
+  "lat": 10.4806,
+  "lon": -66.9036
+ },
+ {
+  "city": "Chicago",
+  "lat": 41.8781,
+  "lon": -87.6298
+ },
+ {
+  "city": "Dallas",
+  "lat": 32.7767,
+  "lon": -96.797
+ },
+ {
+  "city": "Dar_es_Salaam",
+  "lat": -6.7924,
+  "lon": 39.2083
+ },
+ {
+  "city": "Delhi",
+  "lat": 28.6139,
+  "lon": 77.209
+ },
+ {
+  "city": "Dhaka",
+  "lat": 23.8103,
+  "lon": 90.4125
+ },
+ {
+  "city": "Gold_Coast",
+  "lat": -28.0167,
+  "lon": 153.4
+ },
+ {
+  "city": "Honolulu",
+  "lat": 21.3069,
+  "lon": -157.8583
+ },
+ {
+  "city": "Houston",
+  "lat": 29.7604,
+  "lon": -95.3698
+ },
+ {
+  "city": "Istanbul",
+  "lat": 41.0082,
+  "lon": 28.9784
+ },
+ {
+  "city": "Jakarta",
+  "lat": -6.2088,
+  "lon": 106.8456
+ },
+ {
+  "city": "Johannesburg",
+  "lat": -26.2041,
+  "lon": 28.0473
+ },
+ {
+  "city": "Karachi",
+  "lat": 24.8607,
+  "lon": 67.0011
+ },
+ {
+  "city": "Khartoum",
+  "lat": 15.5007,
+  "lon": 32.5599
+ },
+ {
+  "city": "Kinshasa",
+  "lat": -4.4419,
+  "lon": 15.2663
+ },
+ {
+  "city": "Lagos",
+  "lat": 6.5244,
+  "lon": 3.3792
+ },
+ {
+  "city": "Lima_Callao",
+  "lat": -12.0464,
+  "lon": -77.0428
+ },
+ {
+  "city": "London",
+  "lat": 51.5074,
+  "lon": -0.1278
+ },
+ {
+  "city": "Los_Angeles",
+  "lat": 34.0522,
+  "lon": -118.2437
+ },
+ {
+  "city": "Luanda",
+  "lat": -8.839,
+  "lon": 13.2894
+ },
+ {
+  "city": "Madrid",
+  "lat": 40.4168,
+  "lon": -3.7038
+ },
+ {
+  "city": "Manila",
+  "lat": 14.5995,
+  "lon": 120.9842
+ },
+ {
+  "city": "Melbourne",
+  "lat": -37.8136,
+  "lon": 144.9631
+ },
+ {
+  "city": "Mexico_City",
+  "lat": 19.4326,
+  "lon": -99.1332
+ },
+ {
+  "city": "Miami",
+  "lat": 25.7617,
+  "lon": -80.1918
+ },
+ {
+  "city": "Mumbai",
+  "lat": 19.076,
+  "lon": 72.8777
+ },
+ {
+  "city": "New_York_City",
+  "lat": 40.7128,
+  "lon": -74.006
+ },
+ {
+  "city": "Newcastle",
+  "lat": -32.9283,
+  "lon": 151.7817
+ },
+ {
+  "city": "Osaka",
+  "lat": 34.6937,
+  "lon": 135.5023
+ },
+ {
+  "city": "Paris",
+  "lat": 48.8566,
+  "lon": 2.3522
+ },
+ {
+  "city": "Perth",
+  "lat": -31.9505,
+  "lon": 115.8605
+ },
+ {
+  "city": "Philadelphia",
+  "lat": 39.9526,
+  "lon": -75.1652
+ },
+ {
+  "city": "Porto_Alegre",
+  "lat": -30.0346,
+  "lon": -51.2177
+ },
+ {
+  "city": "Recife",
+  "lat": -8.0476,
+  "lon": -34.877
+ },
+ {
+  "city": "Rio_de_Janeiro",
+  "lat": -22.9068,
+  "lon": -43.1729
+ },
+ {
+  "city": "Rome",
+  "lat": 41.9028,
+  "lon": 12.4964
+ },
+ {
+  "city": "Saint_Petersburg",
+  "lat": 59.9311,
+  "lon": 30.3609
+ },
+ {
+  "city": "Santiago",
+  "lat": -33.4489,
+  "lon": -70.6693
+ },
+ {
+  "city": "Sao_Paulo",
+  "lat": -23.5505,
+  "lon": -46.6333
+ },
+ {
+  "city": "Shanghai",
+  "lat": 31.2304,
+  "lon": 121.4737
+ },
+ {
+  "city": "Sydney",
+  "lat": -33.8688,
+  "lon": 151.2093
+ },
+ {
+  "city": "Tokyo",
+  "lat": 35.6762,
+  "lon": 139.6503
+ },
+ {
+  "city": "Toronto",
+  "lat": 43.6532,
+  "lon": -79.3832
+ },
+ {
+  "city": "Warsaw",
+  "lat": 52.2297,
+  "lon": 21.0122
+ },
+ {
+  "city": "Washington_DC",
+  "lat": 38.9072,
+  "lon": -77.0369
+ }
+]
