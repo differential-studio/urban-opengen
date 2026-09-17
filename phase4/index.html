@@ -1,0 +1,2592 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Urban OpenGen Viewer</title>
+<style>
+  :root {
+    --bg: #111214; --panel: #1a1c1f; --line: #2a2d31; --text: #e6e6e6; --muted: #8a8f96;
+    --accent: #e0e0e0; --street: #ff0000; --green: #80ff00; --ask: #ff4b3a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 13px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+  #app { display: grid; grid-template-columns: 1fr 340px; grid-template-rows: 100vh; height: 100vh; }
+  #view { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+  /* absolutely positioned so the canvas can never feed back into the container's size
+     (at Windows display scaling above 100% that produced a runaway resize loop) */
+  #view canvas.gl { position: absolute; inset: 0; width: 100% !important; height: 100% !important; display: block; z-index: 0; }
+  #view > div { z-index: 1; }
+  #panel { background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; padding: 14px 16px 30px; }
+  h1 { font-size: 14px; font-weight: 600; margin: 0 0 10px; letter-spacing: .2px; }
+  h2 { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin: 18px 0 8px; }
+  .row { display: grid; grid-template-columns: 92px 1fr 48px; align-items: center; gap: 8px; margin: 6px 0; }
+  .row label { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row output { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  input[type=number], input[type=text], select { width: 100%; background: #0e0f11; color: var(--text); border: 1px solid var(--line);
+    border-radius: 4px; padding: 4px 6px; font: inherit; }
+  button { background: #2a2d31; color: var(--text); border: 1px solid #3a3e44; border-radius: 4px; padding: 4px 8px;
+    font: inherit; cursor: pointer; }
+  button:hover { background: #34383d; }
+  .seedrow { display: grid; grid-template-columns: 92px 1fr auto; gap: 8px; align-items: center; margin: 6px 0; }
+  .status { font-size: 12px; color: var(--muted); margin-top: 6px; min-height: 16px; }
+  .status.err { color: #ff6b6b; }
+  #hud { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 10px; align-items: flex-end; pointer-events: none; }
+  #hud canvas { image-rendering: pixelated; border: 1px solid var(--line); background: #000; width: 72px; height: 72px; }
+  #hud canvas#c-pal { width: 144px; height: 144px; }
+  #hud .stack { display: flex; flex-direction: column; gap: 4px; }
+  #hud .lbl { font-size: 10px; color: var(--muted); }
+  #metrics { position: absolute; right: 12px; top: 12px; background: rgba(17,18,20,.85); border: 1px solid var(--line);
+    border-radius: 6px; padding: 8px 10px; font-variant-numeric: tabular-nums; min-width: 190px; }
+  #metrics div { display: flex; justify-content: space-between; gap: 14px; }
+  #metrics span:last-child { color: var(--muted); }
+  #latency { position: absolute; left: 12px; top: 12px; color: var(--muted); font-size: 12px; }
+  #empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none;
+    color: var(--muted); font-size: 15px; text-align: center; line-height: 1.6; }
+  #empty b { color: var(--text); font-weight: 600; }
+  #empty[hidden] { display: none; }
+  .hint { color: var(--muted); font-size: 12px; margin: 4px 0 0; }
+  .trow { display: grid; grid-template-columns: 92px 1fr 62px 22px; align-items: center; gap: 8px; margin: 6px 0; }
+  .trow input[type=number] { padding: 3px 6px; }
+  .trow .got { color: var(--muted); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .trow .got.hit { color: #7ed37e; }
+  .trow .got.miss { color: #e0a04a; }
+  .trow button { padding: 1px 6px; line-height: 1.2; }
+  .r2 { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: #666; }
+  .r2.good { background: #7ed37e; } .r2.ok { background: #e0a04a; } .r2.bad { background: #d35f5f; }
+  #metrics .tgt { color: #7ed37e; }
+  #metrics .tgt.miss { color: #e0a04a; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #geo { position: absolute; right: 12px; bottom: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  #geo-pop { background: rgba(17,18,20,.92); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; width: 290px;
+    max-height: calc(100vh - 80px); overflow-y: auto; }
+  #geo-pop[hidden] { display: none; }
+  #geo-pop .row { grid-template-columns: 78px 1fr 44px; margin: 5px 0; }
+  #geo-pop .row label { cursor: help; }
+  #geo-pop select { padding: 2px 4px; }
+  #geo-pop .sub { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin: 10px 0 4px; }
+  #geo-reg[hidden], #geo-vec[hidden] { display: none; }
+  #inp-c { width: 100%; display: block; image-rendering: pixelated; border: 1px solid var(--line);
+    background: #000; cursor: crosshair; touch-action: none; border-radius: 3px; }
+  .tools { display: flex; gap: 6px; margin: 8px 0 4px; }
+  .tools button { flex: 1; }
+  .tools button.on { background: #e0e0e0; color: #111; border-color: #e0e0e0; }
+  .go { display: flex; gap: 6px; margin-top: 8px; }
+  .go button { flex: 1; }
+  .go button:disabled { opacity: .5; cursor: default; }
+  #inp-stat, #dif-stat, #osm-status, #msk-stat { color: var(--muted); font-size: 12px; margin-top: 6px; min-height: 16px; }
+  #dif-stat.err, #osm-status.err { color: #ff6b6b; }
+  h3 { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin: 14px 0 6px; }
+  .trow2 { display: grid; grid-template-columns: 68px 1fr 62px 16px; align-items: center; gap: 5px; margin: 3px 0; }
+  .trow2 label { color: var(--text); line-height: 1.15; cursor: help; overflow-wrap: anywhere; }
+  .trow2 .val { color: var(--text); text-align: right; font-variant-numeric: tabular-nums; font-size: 12px; }
+  /* "as is" is the resting state: the slider shows what the selection measures and the model
+     is told nothing. Touching it turns the row into a request. */
+  .trow2.asis label, .trow2.asis .val { opacity: .5; }
+  .trow2.asis .val::after { content: '\A as is'; white-space: pre; font-size: 10px; line-height: 1.1; opacity: .7; }
+  .trow2 .rst { width: 18px; height: 18px; padding: 0; font-size: 12px; line-height: 1; opacity: 0;
+                pointer-events: none; transition: opacity .12s; }
+  .trow2:not(.asis) .rst { opacity: .7; pointer-events: auto; }
+  .trow2 .got { grid-column: 2 / span 3; color: var(--muted); font-size: 11px; margin-top: -4px; }
+  .trow2 .got.hit { color: #7ed37e; } .trow2 .got.miss { color: #e0a04a; }
+  /* the diagnostic: a verdict line, then one bar per metric showing what the model does
+     here on its own, with the target marked against it */
+  #dif-diag, #dif-cands { margin-top: 8px; font-size: 12px; }
+  #dif-cands .note { color: var(--muted); line-height: 1.5; }
+  #dif-cands .list { color: var(--text); font-variant-numeric: tabular-nums; margin: 3px 0; }
+  #dif-diag .verdict { padding: 6px 8px; border-radius: 4px; margin-bottom: 8px; line-height: 1.45; }
+  #dif-diag .verdict.live { background: rgba(126,211,126,.12); color: #7ed37e; }
+  #dif-diag .verdict.weak { background: rgba(224,160,74,.12); color: #e0a04a; }
+  #dif-diag .verdict.dead { background: rgba(255,107,107,.12); color: #ff6b6b; }
+  #dif-diag .srow { display: grid; grid-template-columns: 68px 1fr 92px; align-items: center; gap: 6px; margin: 5px 0; }
+  #dif-diag .srow > span:first-child { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #dif-diag .srow .num { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; font-size: 11px; }
+  #dif-diag .srow .num.out { color: var(--ask); }
+  /* one metric: the thin line is everything the model produced, the block the middle half,
+     the light tick the median, the red tick what was asked for */
+  #dif-diag .bar { position: relative; height: 18px; border-radius: 3px; background: rgba(127,127,127,.10); }
+  #dif-diag .bar s { position: absolute; top: 8px; height: 2px; background: #59646f; text-decoration: none; }
+  #dif-diag .bar i { position: absolute; top: 5px; height: 8px; border-radius: 2px; background: #8b97a3; }
+  #dif-diag .bar b { position: absolute; top: 3px; width: 2px; height: 12px; background: #e6eaee; transform: translateX(-50%); }
+  #dif-diag .bar u { position: absolute; top: 1px; width: 2px; height: 16px; background: var(--ask); transform: translateX(-50%); text-decoration: none; }
+  #dif-diag .bar u.out { width: 5px; border-radius: 2px; }
+  body[data-theme=light] #dif-diag .verdict.live { background: rgba(40,130,50,.10); color: #1f7a2c; }
+  body[data-theme=light] #dif-diag .verdict.weak { background: rgba(180,110,20,.10); color: #9a5d0c; }
+  body[data-theme=light] #dif-diag .verdict.dead { background: rgba(200,40,40,.10); color: #b02020; }
+  body[data-theme=light] #dif-diag .bar s { background: #98a2ac; }
+  body[data-theme=light] #dif-diag .bar i { background: #6e7a86; }
+  body[data-theme=light] #dif-diag .bar b { background: #22262a; }
+  #dif-diag .note { color: var(--muted); margin-top: 6px; line-height: 1.5; }
+  .qrow { display: grid; grid-template-columns: 1fr 62px; gap: 6px; }
+  .qbox { position: relative; }
+  .qbox input { width: 100%; box-sizing: border-box; }
+  /* the address suggestions: type, arrow down, Enter. No Find, no second button. */
+  #osm-sug { position: absolute; top: calc(100% + 2px); left: 0; right: 0; z-index: 30; max-height: 230px;
+    overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 4px;
+    box-shadow: 0 8px 20px rgba(0,0,0,.35); }
+  #osm-sug[hidden] { display: none; }
+  #osm-sug div { padding: 6px 8px; font-size: 11px; line-height: 1.35; cursor: pointer; color: var(--muted); }
+  #osm-sug div b { color: var(--text); font-weight: 600; display: block; }
+  #osm-sug div.on, #osm-sug div:hover { background: rgba(127,127,127,.14); }
+  #msk-win { color: var(--muted); font-size: 11px; margin-top: 4px; line-height: 1.45; white-space: pre-line; }
+  #msk-win.warn { color: #e0a04a; }
+  #msk-win.err { color: var(--ask); }
+  #osm-bar { height: 3px; background: #2a2d31; border-radius: 2px; overflow: hidden; margin-top: 6px; }
+  #osm-bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+  #geo-pop .modes { display: flex; gap: 6px; margin-bottom: 8px; }
+  #geo-pop .modes button { flex: 1; }
+  #geo-pop .modes button.on { background: #e0e0e0; color: #111; border-color: #e0e0e0; }
+  #geo-stat { color: var(--muted); font-size: 11px; margin-top: 4px; }
+  #tabs { display: flex; gap: 6px; position: sticky; top: -14px; background: var(--panel); padding: 8px 0 10px; z-index: 5; }
+  #tabs button { flex: 1; padding: 6px 8px; font-size: 12px; letter-spacing: .4px; }
+  #tabs button.on { background: #e0e0e0; color: #111; border-color: #e0e0e0; }
+  #pane-gan[hidden], #pane-dif[hidden] { display: none; }
+  #sel-3d.on, #sel-rect.on, #sel-poly.on { background: var(--accent); color: #111; border-color: var(--accent); }
+  #sel-mode { margin-top: 4px; }
+  #mask-sec h3 { margin-top: 14px; }
+  h3[title] { cursor: help; }
+  #paint-tools[hidden] { display: none; }
+  /* Advanced: everything that is true but rarely touched, one click away */
+  details.adv { margin: 10px 0 4px; border-top: 1px solid var(--line); padding-top: 8px; }
+  details.adv > summary { cursor: pointer; list-style: none; font-size: 11px; font-weight: 600;
+    color: var(--muted); text-transform: uppercase; letter-spacing: .6px; user-select: none; padding: 2px 0; }
+  details.adv > summary::-webkit-details-marker { display: none; }
+  details.adv > summary::before { content: '\25b8'; display: inline-block; width: 12px; transition: transform .15s; }
+  details.adv[open] > summary::before { transform: rotate(90deg); }
+  details.adv > summary:hover { color: var(--text); }
+  details.adv .sub { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .6px; margin: 12px 0 4px; }
+  /* the light theme: the panel, the board and the tile ground all swap; red, green and the
+     building greys are data and stay exactly as they are */
+  body[data-theme=light] { --bg:#eae7e1; --panel:#f2f0eb; --line:#d3cfc7; --text:#15181b; --muted:#63676b;
+    --accent:#e02414; --ask:#d6201a; }
+  body[data-theme=light] button { background:#f8f6f2; border-color:#cfcbc3; color:var(--text); }
+  body[data-theme=light] button:hover { background:#fffefb; }
+  body[data-theme=light] button.on, body[data-theme=light] #tabs button.on,
+  body[data-theme=light] .tools button.on, body[data-theme=light] #geo-pop .modes button.on { background:#2a2d31; color:#f6f4f0; border-color:#2a2d31; }
+  body[data-theme=light] select, body[data-theme=light] input[type=number], body[data-theme=light] input[type=text] { background:#f8f6f2; border-color:#cfcbc3; color:var(--text); }
+  body[data-theme=light] #geo-pop { background:rgba(242,240,235,.94); }
+  body[data-theme=light] #metrics { background:rgba(242,240,235,.92); border-color:var(--line); color:var(--text); }
+  body[data-theme=light] #latency, body[data-theme=light] #geo-stat { color:var(--muted); }
+  body[data-theme=light] #empty { background:rgba(234,231,225,.9); color:var(--muted); }
+  body[data-theme=light] #hud .lbl { color:var(--muted); }
+  /* the design space export */
+  #exp-modal { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center;
+    justify-content: center; z-index: 50; }
+  #exp-modal[hidden] { display: none; }
+  #exp-box { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; width: 640px;
+    max-width: calc(100vw - 32px); max-height: calc(100vh - 48px); overflow-y: auto; padding: 16px 18px 14px; }
+  #exp-box h2 { margin-top: 0; }
+  #exp-scope { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
+  #exp-axes { display: grid; grid-template-columns: 16px 1fr 62px 62px 52px 1fr; gap: 6px 8px; align-items: center; }
+  #exp-axes .head { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .6px; }
+  #exp-axes label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: help; }
+  #exp-axes input[type=number] { padding: 3px 5px; text-align: right; font-variant-numeric: tabular-nums; }
+  #exp-axes .vals { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #exp-axes .arow { display: contents; }
+  #exp-axes .arow.off label, #exp-axes .arow.off .vals { opacity: .4; }
+  #exp-axes .arow.off input[type=number] { opacity: .5; }
+  #exp-axes .grp { grid-column: 1 / -1; color: var(--muted); font-size: 10px; text-transform: uppercase;
+    letter-spacing: .6px; margin: 8px 0 0; border-top: 1px solid var(--line); padding-top: 7px; }
+  #exp-foot { display: flex; align-items: center; gap: 10px; margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+  #exp-count { flex: 1; font-variant-numeric: tabular-nums; }
+  #exp-count b { font-size: 15px; }
+  #exp-count.over b { color: #e0a04a; }
+  #exp-name { width: 190px; }
+  #exp-bar { height: 4px; background: #2a2d31; border-radius: 2px; overflow: hidden; margin-top: 10px; }
+  #exp-bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .4s; }
+  #exp-run { margin-top: 8px; color: var(--muted); font-size: 12px; min-height: 16px; }
+  #exp-run.err { color: #ff6b6b; }
+  #exp-stat { color: var(--muted); font-size: 12px; margin-top: 6px; min-height: 16px; }
+  #exp-stat.err { color: #ff6b6b; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "/vendor/three.module.js",
+  "three/addons/controls/OrbitControls.js": "/vendor/OrbitControls.js",
+  "three/addons/utils/BufferGeometryUtils.js": "/vendor/BufferGeometryUtils.js"
+} }
+</script>
+</head>
+<body>
+<div id="app">
+  <div id="view">
+    <div id="latency"></div>
+    <div id="empty"><div><b>Nothing loaded yet</b><br>Find a place on the right and load it from OpenStreetMap.</div></div>
+    <div id="metrics"></div>
+    <div id="geo">
+      <div id="geo-pop" hidden>
+        <div class="modes"><button id="geo-voxel" class="on">Voxels</button><button id="geo-clean">Clean</button><button id="geo-regular">Regular</button><button id="geo-vector" title="Fitted on the server (vectorize.py): every building on its own axis, walls on detected lines, streets as a cleaned graph with widths. Exports GeoJSON.">Vector</button></div>
+        <div class="row"><label>simplify</label><input type="range" id="geo-tol" min="0" max="1.5" step="0.05" value="0.6"><output for="geo-tol">0.60</output></div>
+        <div class="row"><label>min size</label><input type="range" id="geo-min" min="1" max="12" step="1" value="2"><output for="geo-min">2</output></div>
+        <div class="row"><label>plates</label><input type="range" id="geo-plate" min="0" max="3" step="0.1" value="0.5"><output for="geo-plate">0.5</output></div>
+        <div class="row"><label>trees</label><input type="range" id="geo-trees" min="0" max="1" step="0.05" value="0.5"><output for="geo-trees">0.50</output></div>
+        <div class="row"><label>board</label><select id="geo-board"><option value="light">light</option><option value="dark">dark</option></select><span></span></div>
+        <div class="row"><label title="Kerbs along the blocks, a parapet around every roof, storey lines up the walls, corner edges and dashed centre lines down the streets. Costs 20 to 60 ms on a rebuild.">detail</label><input type="checkbox" id="geo-detail" checked><span></span></div>
+        <div id="geo-reg" hidden>
+          <div class="sub" title="Everything below works in a frame rotated to the city's dominant direction, where straight means axis-aligned.">Regularise</div>
+          <div class="row"><label title="Which direction the frame is rotated to: the whole tile's dominant axis, each building's own axis (falling back to the tile's), or none (0 degrees).">axis</label><select id="rg-axis"><option value="tile">tile</option><option value="own">per building</option><option value="none">none</option></select><output id="rg-axis-out"></output></div>
+          <div class="row"><label title="Outlines used to measure the dominant direction.">axis from</label><select id="rg-src"><option value="both">both</option><option value="streets">streets</option><option value="buildings">buildings</option></select><span></span></div>
+          <div class="row"><label title="Resampling of the distance fields in the rotated frame, samples per native pixel. 2 is a good default; 1 is fastest.">upsample</label><input type="range" id="rg-up" min="1" max="3" step="1" value="2"><output for="rg-up">2</output></div>
+          <div class="row"><label title="Morphological opening radius in native pixels: removes pimples and thin spurs, and splits masses joined by a thin neck.">despeckle</label><input type="range" id="rg-open" min="0" max="2" step="0.25" value="0.5"><output for="rg-open">0.50</output></div>
+          <div class="row"><label title="Morphological closing radius in native pixels: fills notches and gaps narrower than twice this. Keep at 0 for dense tiles or it swallows narrow streets.">fill gaps</label><input type="range" id="rg-close" min="0" max="2" step="0.25" value="0"><output for="rg-close">0.00</output></div>
+          <div class="row"><label title="ortho: snap every edge to the frame axes. rect: cover with the largest inscribed rectangles, each with its own height. box: bounding rectangle. trace: Douglas-Peucker only.">buildings</label><select id="rg-bld"><option value="rect">rectangles</option><option value="ortho">ortho</option><option value="box">boxes</option><option value="trace">trace</option></select><span></span></div>
+          <div class="row"><label title="ortho: edges shorter than this are removed by merging their neighbours, shortest first.">min edge</label><input type="range" id="rg-edge" min="0.5" max="10" step="0.5" value="2.5"><output for="rg-edge"></output></div>
+          <div class="row"><label title="A piece that fills its bounding rectangle above this ratio becomes that rectangle.">box if fill</label><input type="range" id="rg-fill" min="0.5" max="1" step="0.02" value="0.85"><output for="rg-fill">0.85</output></div>
+          <div class="row"><label title="rectangles: smallest rectangle kept.">min rect</label><input type="range" id="rg-rect" min="1" max="16" step="1" value="4"><output for="rg-rect"></output></div>
+          <div class="row"><label title="0 keeps one height per building (median). Above 0, a building is split into parts whose heights differ by more than this many metres, each extruded to its own median.">height step</label><input type="range" id="rg-hstep" min="0" max="15" step="1" value="6"><output for="rg-hstep">6 m</output></div>
+          <div class="row"><label title="blocks: regularise the not-street area as blocks and draw streets as the ground between them. trace: outline the street pixels directly.">streets</label><select id="rg-st"><option value="blocks">blocks</option><option value="trace">trace</option></select><span></span></div>
+          <div class="row"><label title="Shape method for the blocks.">blocks</label><select id="rg-blk"><option value="ortho">ortho</option><option value="rect">rectangles</option></select><span></span></div>
+          <div class="row"><label title="Shape method for green areas.">green</label><select id="rg-gr"><option value="trace">trace</option><option value="ortho">ortho</option><option value="rect">rectangles</option></select><span></span></div>
+        </div>
+        <div id="geo-vec" hidden>
+          <div class="sub" title="Runs on the server (vectorize.py). Buildings are fitted, not traced: each one is measured in a frame rotated to its own axis, the walls go on the few lines the distance field votes for, and the union of the cells inside those lines is the building. Streets are the skeleton of the street field as a cleaned graph, straightened and re-intersected, each with its width.">Vectorise</div>
+          <div class="row"><label title="Frame for each building: its own edges (falling back to the nearest street, then the tile), the nearest street, the tile's dominant direction, or none (0 degrees).">axis</label><select id="vc-axis"><option value="own">per building</option><option value="street">nearest street</option><option value="tile">tile</option><option value="none">none</option></select><output id="vc-axis-out"></output></div>
+          <div class="row"><label title="Footprints smaller than this are dropped and courtyards smaller than this are filled.">min building</label><input type="range" id="vc-minb" min="10" max="150" step="5" value="30"><output for="vc-minb">30 m²</output></div>
+          <div class="row"><label title="Split a mass at narrow necks into separate buildings (watershed on the distance transform).">split necks</label><input type="checkbox" id="vc-necks" checked><span></span></div>
+          <div class="row"><label title="0 keeps one height per building. Above 0, a building whose height map steps by more than this is split into parts that share the same walls.">height step</label><input type="range" id="vc-hstep" min="0" max="15" step="1" value="6"><output for="vc-hstep">6 m</output></div>
+          <div class="row"><label title="Cut a convex corner where the field says it is cut (Barcelona). Off keeps every corner square.">chamfers</label><input type="checkbox" id="vc-chamfer" checked><span></span></div>
+          <div class="row"><label title="Two walls closer than this are one wall. Lower keeps more detail, higher gives simpler outlines.">line spacing</label><input type="range" id="vc-sep" min="2" max="8" step="0.5" value="3"><output for="vc-sep">3.0 m</output></div>
+          <div class="row"><label title="Grey opening of the footprint field before fitting: removes 1-pixel specks and spurs of a generated tile, costs the thinnest real buildings.">despeckle</label><input type="checkbox" id="vc-open"><span></span></div>
+          <div class="row"><label title="A street within this angle of the grid axis is snapped to it. 0 leaves every street at its measured angle.">street snap</label><input type="range" id="vc-snap" min="0" max="15" step="1" value="8"><output for="vc-snap">8°</output></div>
+          <div class="row"><label title="Dead-end stubs shorter than this are skeleton artefacts and removed (always at least 1.5 street widths).">street spur</label><input type="range" id="vc-spur" min="10" max="60" step="5" value="20"><output for="vc-spur">20 m</output></div>
+          <div class="row"><label title="Douglas-Peucker tolerance for the centrelines before they are straightened, in native pixels.">street simplify</label><input type="range" id="vc-seps" min="0.5" max="3" step="0.1" value="1.4"><output for="vc-seps">1.4 px</output></div>
+          <div class="row"><label title="Draw the fitted centrelines on the streets.">centrelines</label><input type="checkbox" id="vc-lines" checked><span></span></div>
+          <div style="display:flex; gap:8px; margin-top:8px">
+            <button id="vc-3dm" title="Rhino file: buildings as capped solids (courtyards included), their outlines, street centrelines with a width_m attribute, street plates, blocks and greens, each on its own layer, in metres. Exports what the board shows: real OSM outlines outside a rebuilt area, the fit inside. Needs the rhino3dm package on the server.">Download 3DM</button>
+            <button id="vc-geojson" title="Buildings with heights, streets with widths, greens and blocks in local metres (x east, y north, origin at the tile centre).">GeoJSON</button>
+          </div>
+        </div>
+        <div id="geo-stat"></div>
+      </div>
+      <button id="btn-geo">Geometry</button>
+    </div>
+    <div id="hud">
+      <div class="stack"><span class="lbl">tile</span><canvas id="c-pal" width="128" height="128"></canvas></div>
+      <div class="stack"><span class="lbl">footprint</span><canvas id="c-fp" width="64" height="64"></canvas></div>
+      <div class="stack"><span class="lbl">height</span><canvas id="c-h" width="64" height="64"></canvas></div>
+      <div class="stack"><span class="lbl">street</span><canvas id="c-st" width="64" height="64"></canvas></div>
+      <div class="stack"><span class="lbl">green</span><canvas id="c-gr" width="64" height="64"></canvas></div>
+    </div>
+  </div>
+  <div id="panel">
+    <h1>Urban OpenGen</h1>
+
+    <div id="tabs">
+      <button id="tab-dif" class="on" title="the app: load a place, choose an area, rebuild it">Diffusion</button>
+      <button id="tab-gan" title="the StyleGAN2 tile generator: latents, cities, metric directions. A proof of concept, not the app.">GAN lab</button>
+    </div>
+    <div id="pane-gan">
+    <h2>Model</h2>
+    <select id="snap"></select>
+    <div style="display:flex; gap:8px; margin-top:6px">
+      <button id="btn-load">Load</button>
+      <button id="btn-refresh">Rescan</button>
+    </div>
+    <div id="model-status" class="status"></div>
+
+    <h2>Latent</h2>
+    <div class="seedrow"><label>seed A</label><input type="number" id="seed_a" value="0" step="1"><button data-rand="seed_a">rnd</button></div>
+    <div class="seedrow"><label>seed B</label><input type="number" id="seed_b" value="1" step="1"><button data-rand="seed_b">rnd</button></div>
+    <div class="row"><label>A to B</label><input type="range" id="mix" min="0" max="1" step="0.01" value="0"><output for="mix">0.00</output></div>
+    <div class="row"><label>truncation</label><input type="range" id="psi" min="0" max="1.5" step="0.01" value="1"><output for="psi">1.00</output></div>
+
+    <h2>City</h2>
+    <div class="split"><select id="city_a"></select><select id="city_b"></select></div>
+    <div class="row"><label>blend A to B</label><input type="range" id="city_mix" min="0" max="1" step="0.01" value="0"><output for="city_mix">0.00</output></div>
+
+    <div id="real-sec" hidden>
+      <h2>Reference tile</h2>
+      <div class="split"><select id="real_city"></select><select id="real_idx"></select></div>
+      <div style="display:flex; gap:8px; margin-top:6px; align-items:center">
+        <button id="btn-real">Show real tile</button>
+        <button id="btn-real-rnd" title="random tile of this city">rnd</button>
+      </div>
+      <p class="hint">A real OSM tile, encoded exactly like the training data, through the same viewer and geometry settings. Moving any slider returns to the generated tile.</p>
+    </div>
+
+    <h2>Principal components of W</h2>
+    <div id="pca"></div>
+    <p class="hint">Computed from the loaded model at load time. Each slider moves along one axis of variation, in units of that axis' standard deviation.</p>
+
+    <h2>Metric directions</h2>
+    <div id="dirs"></div>
+    <p class="hint" id="dirs-hint">Appear here when the server is started with a directions.npz from fit_directions.py.</p>
+    <p class="hint" id="dirs-legend" hidden>Dot shows how linear each metric is in W: green is reliably controllable, amber weak, red mostly noise. Hover for the number.</p>
+
+    <h2>Targets</h2>
+    <div id="targets"></div>
+    <p class="hint" id="targets-hint">Type an absolute value and the server solves for it, starting from the tile the sliders above produce. Green means hit within tolerance, amber means the model got as close as it could.</p>
+
+    <div id="inp-sec" hidden>
+      <details class="adv">
+        <summary>Inpaint by latent search (legacy)</summary>
+      <div class="row"><label title="Optimisation steps. More is a closer match to the surroundings and a slower fill.">steps</label><input type="range" id="inp-steps" min="50" max="1500" step="50" value="400"><output for="inp-steps">400</output></div>
+      <div class="row"><label title="How hard the search is pulled back toward the average tile of the chosen city. Higher keeps the fill typical, lower lets it match the surroundings more closely and risks nonsense.">prior</label><input type="range" id="inp-reg" min="0" max="0.2" step="0.005" value="0"><output for="inp-reg">0.000</output></div>
+      <div class="row"><label title="How much the fit has to match the far parts of the tile. 1 matches the whole tile, which gives the most coherent fill. Turn it down when the model cannot reproduce this tile: the fit then concentrates on the neighbourhood of the hole and the seam lines up much better.">context</label><input type="range" id="inp-context" min="0.1" max="1" step="0.05" value="0.6"><output for="inp-context">0.60</output></div>
+      <div class="row"><label title="Radius in pixels of the halo around the hole that the fit weights most heavily.">focus</label><input type="range" id="inp-focus" min="4" max="24" step="1" value="10"><output for="inp-focus">10</output></div>
+      <div class="row"><label title="Pixels over which the generated patch is blended into the original. The channels are distance fields, so the blend is smooth and the outlines stay continuous.">feather</label><input type="range" id="inp-feather" min="0" max="6" step="1" value="2"><output for="inp-feather">2</output></div>
+      <div class="go"><button id="inp-fill">Fill</button></div>
+      <div id="inp-stat"></div>
+      <p class="hint">No second model: the generator searches its latent space for the tile that best matches everything you did not paint, and whatever it puts inside the mask is by construction a plausible piece of city. The city selector above sets the style it reaches for. Only works at the generator's own resolution.</p>
+        <p class="hint">Choose the area on the Diffusion tab; this fill uses the same selection.</p>
+      </details>
+    </div>
+
+    </div>
+
+    <div id="pane-dif">
+    <div id="dif-sec" hidden>
+      <h2>Place</h2>
+      <div class="qbox">
+        <input id="osm-q" type="text" placeholder="type an address, press Enter" autocomplete="off" spellcheck="false">
+        <div id="osm-sug" hidden></div>
+      </div>
+      <div id="osm-bar"><i></i></div>
+      <div id="osm-status"></div>
+
+      <div id="mask-sec" hidden>
+        <h3>Selection</h3>
+        <div class="go"><button id="sel-3d" title="drag on the ground in the 3D view to choose the area to rebuild; while this is on the camera does not orbit">Select area in 3D</button></div>
+        <div class="go" id="sel-mode"><button id="sel-rect" class="on" title="Drag one rectangle on the ground.">Rectangle</button><button id="sel-poly" title="Click the corners of a shape on the ground. Click the first corner again, double click, or press Enter to close it. Backspace removes the last corner, Escape cancels.">Shape</button></div>
+        <p class="hint" id="sel-hint">Drag a rectangle on the ground in the 3D view.</p>
+        <div id="paint-tools" hidden>
+          <canvas id="inp-c" width="128" height="128"></canvas>
+          <button id="inp-brush" class="on"></button>
+          <button id="inp-rect"></button>
+          <button id="inp-erase"></button>
+          <input type="range" id="inp-size" min="1" max="40" step="1" value="8"><output for="inp-size">8</output>
+        </div>
+        <div class="go">
+          <button id="msk-clear">Clear</button>
+          <button id="msk-undo" disabled>Undo</button>
+        </div>
+        <div id="msk-stat"></div>
+        <div id="msk-win"></div>
+      </div>
+
+      <h3 title="Each slider rests at what the selected area measures now, marked as is, and in that state the model is told nothing about it. Move one and it becomes a request; the arrow puts it back. Under each is what the fill actually measured.">Design space parameters</h3>
+      <div id="dif-targets"></div>
+
+      <div class="row"><label title="Classifier-free guidance: how hard the model is pushed toward the requested numbers. 1 ignores them, 2 is the default, above 4 starts to distort the fabric.">guidance</label><input type="range" id="dif-cfg" min="0" max="6" step="0.25" value="2"><output for="dif-cfg">2.0</output></div>
+      <div class="row"><label title="Metric guidance: at every step the fill is measured and pushed toward the numbers you asked for. Unlike guidance above, this does not rely on the network having learned to use the condition, it differentiates the measurement itself. 0 is off; past about 0.6 the geometry starts to smear.">pull to target</label><input type="range" id="dif-guide" min="0" max="1" step="0.05" value="0"><output for="dif-guide">off</output></div>
+      <div class="row"><label title="Sample this many seeds and keep the one whose measurement is closest to what you asked for. Costs one full sample each. Every candidate keeps its own seed, so the one that is kept can be reproduced on its own.">best of</label><input type="range" id="dif-bestof" min="1" max="16" step="1" value="1"><output for="dif-bestof">off</output></div>
+      <div class="row"><label title="Same seed and same request gives the same fill.">seed</label><input type="number" id="dif-seed" value="0" step="1"><button data-rand="dif-seed">rnd</button></div>
+      <div class="go"><button id="dif-fill">Fill</button><button id="dif-probe" title="Sample this area a dozen times with nothing asked for, and once at each end of one slider. Tells you whether the request reaches the model at all, and what range the model can actually produce here.">Diagnose</button></div>
+      <div id="dif-stat"></div>
+      <div id="dif-diag" hidden></div>
+      <div id="dif-cands" hidden></div>
+
+      <details class="adv">
+        <summary>Settings</summary>
+        <div class="row"><label title="Denoising steps. 30 is enough for a look, 60 is cleaner, above that changes little.">steps</label><input type="range" id="dif-steps" min="10" max="120" step="5" value="40"><output for="dif-steps">40</output></div>
+        <div class="row"><label title="RePaint resampling: after each step the fill is pushed back up the noise schedule and re-predicted, so it re-harmonises with the edges of the hole. Costs one extra pass per level.">harmonise</label><input type="range" id="dif-resample" min="0" max="3" step="1" value="0"><output for="dif-resample">0</output></div>
+        <label class="hint" style="display:flex; gap:6px; align-items:center; margin-top:6px"><input type="checkbox" id="dif-keepst"> keep the existing streets, rebuild only the plots</label>
+        <label class="hint" style="display:flex; gap:6px; align-items:center; margin-top:6px" title="Off: the seam between the real city and the model's work is the bounding rectangle of what you painted, so everything inside that box is rebuilt. On: the seam follows the painted shape itself, so an L of blocks stays an L and the city between the arms is left as OpenStreetMap drew it. Applies to the geometry on the board, not to the fill: the model always receives the exact mask."><input type="checkbox" id="dif-shape"> keep the drawn shape, not its bounding rectangle</label>
+        <div class="row"><label title="How much OpenStreetMap to load around the address, in metres. 800 m is the largest window the model reads, so at 800 the load is exactly one window and the selection has to sit inside it with fabric around it. Load more if you want to move the selection around without refetching; it costs a slower load and a heavier view.">load</label><input type="range" id="osm-context" min="400" max="2000" step="100" value="800"><output for="osm-context">800 m</output></div>
+        <div class="sub">Checkpoint</div>
+        <select id="dif-ckpt"></select>
+        <div class="go">
+          <button id="dif-load">Load</button>
+          <button id="dif-rescan">Rescan</button>
+        </div>
+        <div id="dif-status" class="status"></div>
+      </details>
+    </div>
+    </div>
+
+    <div id="exp-sec">
+      <h2>Design space</h2>
+      <div class="go"><button id="exp-open" title="Sweep the sliders and write one Rhino model per option, plus the two CSVs the multiobjective viewer reads.">Export design space</button></div>
+      <div id="exp-stat"></div>
+    </div>
+
+    <h2>View</h2>
+    <div style="display:flex; gap:8px">
+      <button id="btn-cam">Reset camera</button>
+      <button id="btn-theme" title="light or dark: the panel, the scene background, the model board and the ground under the tiles. Red, green and the building greys are data and never change">Light</button>
+    </div>
+    <details class="adv">
+      <summary>Display</summary>
+      <div class="row"><label title="Vertical exaggeration of the 3D view only. At 1.00 the buildings stand at the height the data says; this does not change the data or the metrics.">height &times;</label><input type="range" id="hscale" min="0.25" max="4" step="0.05" value="1"><output for="hscale">1.00</output></div>
+      <div class="row"><label title="Gap left between cells when the tile is drawn as voxels.">cell gap</label><input type="range" id="gap" min="0" max="0.5" step="0.05" value="0"><output for="gap">0.00</output></div>
+      <div style="display:flex; gap:8px; margin-top:8px"><button id="btn-reset">Reset sliders</button></div>
+    </details>
+  </div>
+</div>
+
+<div id="exp-modal" hidden>
+  <div id="exp-box">
+    <h2>Design space</h2>
+    <p id="exp-scope"></p>
+    <div class="row" id="exp-ctx" hidden><label title="How much of the city around the painted area takes part. Everything within this distance of it casts shadows and blocks views; everything beyond is left out of the measurements and out of context.3dm. The app can hold 1.5 km of OpenStreetMap and measuring all of it is wasted work: the cost grows with the square of the side.">context</label><input type="range" id="exp-ctxm" min="0" max="800" step="50" value="300"><output for="exp-ctxm">300 m</output></div>
+    <div id="exp-axes"></div>
+    <div id="exp-foot">
+      <div id="exp-count"></div>
+      <input type="text" id="exp-name" placeholder="folder name">
+      <label class="hint" style="display:flex;gap:5px;align-items:center;margin:0"><input type="checkbox" id="exp-thumbs" checked> thumbs</label>
+      <button id="exp-go">Export</button>
+      <button id="exp-close">Close</button>
+    </div>
+    <div id="exp-bar"><i></i></div>
+    <div id="exp-run"></div>
+  </div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { regularise } from '/regular.js';
+
+// ---------------------------------------------------------------- state
+const $ = (s) => document.querySelector(s);
+let state = null;               // /api/state
+let last = null;                // last generate response (decoded)
+let lastRes = null;             // the raw payload behind it, so it can be re-sent or restored
+let inpMask = null, inpRect = null, inpUndo = null, inpTool = 'brush', inpBusy = false;
+let VEC = null;                 // real OpenStreetMap geometry for the loaded area, when there is one
+let genRect = null;             // the rectangle the diffusion model rebuilt, in world metres
+let genMask = null;             // the mask as it was at that fill, for the drawn-shape seam
+let undoVec = null;             // VEC, genRect and genMask as they were before the last fill
+let inflight = false, dirty = false, timer = null;
+let lastGenMs = 0, difLastMs = 0, difLastSteps = 40;   // what the models actually cost, for the export estimate
+
+// ---------------------------------------------------------------- three
+const view = $('#view');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.domElement.className = 'gl';
+view.prepend(renderer.domElement);   // first child, so the overlays stay on top
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x111214);
+// light and dark. The tiles are data: red is street, green is planted and the grey of a
+// building is its height, so those never change. What changes is everything around them,
+// including the ground the tile is drawn on, which is black on dark and a mid grey on light
+// so that white towers still read.
+const THEMES = {
+  dark: { empty: [0, 0, 0], bg: 0x111214, board: 'dark', frame: 0x3a3e44, label: 'Light' },
+  light: { empty: [185, 182, 176], bg: 0xeae7e1, board: 'light', frame: 0x9a968e, label: 'Dark' },
+};
+let THEME = 'dark';
+const camera = new THREE.PerspectiveCamera(45, 1, 1, 5000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.maxPolarAngle = Math.PI / 2 - 0.02;
+
+scene.add(new THREE.HemisphereLight(0xe6e9ee, 0x26282c, 0.8));
+const sun = new THREE.DirectionalLight(0xfff6ea, 2.3);
+sun.position.set(-320, 520, 260);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); sun.shadow.radius = 2.5; sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.6;
+scene.add(sun); scene.add(sun.target);
+const fill = new THREE.DirectionalLight(0xdde6f5, 0.35); fill.position.set(360, 200, -300); scene.add(fill);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = false;      // the scene is static between rebuilds: one shadow pass each
+function sunShadow() {
+  const c = sun.shadow.camera, r = TILE * 0.8;
+  c.left = -r; c.right = r; c.top = r; c.bottom = -r; c.near = 1; c.far = 2000;
+  c.updateProjectionMatrix();
+  renderer.shadowMap.needsUpdate = true;
+}
+
+let TILE = 400;
+let groundTex = null, groundRes = 0;
+const groundMat = new THREE.MeshStandardMaterial({ roughness: 1, color: 0x000000 });
+function ensureGroundTexture(W, H) {
+  // three.js allocates the GPU texture at the canvas' size on first upload; a later canvas
+  // resize only updates a sub-region, so the texture has to be recreated when W or H change
+  if (groundTex && groundRes === W * 1e5 + H) return;
+  if (groundTex) groundTex.dispose();
+  groundTex = new THREE.CanvasTexture($('#c-pal'));
+  groundTex.magFilter = THREE.NearestFilter; groundTex.minFilter = THREE.NearestFilter;
+  groundTex.colorSpace = THREE.SRGBColorSpace;
+  groundMat.map = groundTex; groundMat.color.set(0xffffff); groundMat.needsUpdate = true;
+  groundRes = W * 1e5 + H;
+}
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(TILE, TILE), groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+const frame = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(TILE, TILE)),
+  new THREE.LineBasicMaterial({ color: 0x3a3e44 }));
+frame.rotation.x = -Math.PI / 2; frame.position.y = 0.2;
+scene.add(frame);
+// an area loaded from OpenStreetMap can be any size, so the board resizes with it
+function setTile(m) {
+  m = +m || 400;
+  if (Math.abs(m - TILE) < 1e-6) return;
+  const grew = m > TILE * 1.5 || m < TILE / 1.5;
+  TILE = m;
+  ground.geometry.dispose(); ground.geometry = new THREE.PlaneGeometry(TILE, TILE);
+  frame.geometry.dispose(); frame.geometry = new THREE.EdgesGeometry(new THREE.PlaneGeometry(TILE, TILE));
+  sunShadow();
+  if (grew) resetCamera();
+}
+
+let buildings = null;   // InstancedMesh
+const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+boxGeo.translate(0, 0.5, 0);   // grow upward from y=0
+const boxMat = new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0.0 });
+
+function ensureInstances(n) {
+  if (buildings && buildings.instanceMatrix.count >= n) return;
+  if (buildings) { scene.remove(buildings); buildings.dispose(); }
+  buildings = new THREE.InstancedMesh(boxGeo, boxMat, Math.max(n, 1));
+  buildings.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  buildings.castShadow = true; buildings.receiveShadow = true;
+  scene.add(buildings);
+}
+
+function resetCamera() {
+  camera.position.set(TILE * 0.9, TILE * 0.75, TILE * 0.9);
+  controls.target.set(0, 0, 0);
+  controls.update();
+}
+function resize() {
+  const w = view.clientWidth, h = view.clientHeight;
+  if (!w || !h) return;
+  renderer.setSize(w, h, false);          // drawing buffer only; CSS size is pinned by the .gl rule
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(view);
+resize(); resetCamera();
+(function loop() { controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
+
+// ---------------------------------------------------------------- decode + draw
+function greyToMetres(g) {
+  const m = state.height_map;
+  return m.h_min + (g - m.grey_min) * (m.h_max - m.h_min) / (m.grey_max - m.grey_min);
+}
+
+function drawTile(res) {
+  const { C, H, W } = res;
+  if (res.tile_m) setTile(res.tile_m);
+  const bytes = Uint8Array.from(atob(res.channels_b64), (ch) => ch.charCodeAt(0));
+  const plane = H * W;
+  const fp = bytes.subarray(0, plane), hgt = bytes.subarray(plane, 2 * plane),
+        st = bytes.subarray(2 * plane, 3 * plane), gr = bytes.subarray(3 * plane, 4 * plane);
+
+  // palette canvas (also the ground texture)
+  const pal = $('#c-pal'); pal.width = W; pal.height = H;
+  const pctx = pal.getContext('2d'); const img = pctx.createImageData(W, H);
+  const inv = state.lut_inverse;
+  const heights = new Float32Array(plane);
+  let nb = 0;
+  const [er, eg, eb] = THEMES[THEME].empty;
+  for (let i = 0; i < plane; i++) {
+    let r = er, g = eg, b = eb;
+    // height is decoded for every pixel (outside footprints it is the SDF dataset's blurred fill),
+    // so the regulariser can sample it wherever a resampled outline lands
+    heights[i] = greyToMetres(inv[hgt[i]]);
+    if (fp[i] >= 128) { const grey = inv[hgt[i]]; r = g = b = grey; nb++; }
+    if (gr[i] >= 128) { r = 128; g = 255; b = 0; }
+    if (st[i] >= 128) { r = 255; g = 0; b = 0; }
+    img.data[4 * i] = r; img.data[4 * i + 1] = g; img.data[4 * i + 2] = b; img.data[4 * i + 3] = 255;
+  }
+  pctx.putImageData(img, 0, 0);
+  ensureGroundTexture(W, H);
+  groundTex.needsUpdate = true;
+  if (geoMode !== 'voxel') { groundMat.map = null; groundMat.color.set(CLEAN_GROUND); groundMat.needsUpdate = true; }
+
+  // raw channel thumbnails
+  for (const [id, arr] of [['#c-fp', fp], ['#c-h', hgt], ['#c-st', st], ['#c-gr', gr]]) {
+    const c = $(id); c.width = W; c.height = H;
+    const ctx = c.getContext('2d'); const d = ctx.createImageData(W, H);
+    for (let i = 0; i < plane; i++) { d.data[4 * i] = d.data[4 * i + 1] = d.data[4 * i + 2] = arr[i]; d.data[4 * i + 3] = 255; }
+    ctx.putImageData(d, 0, 0);
+  }
+
+  last = { H, W, fp, hgt, st, gr, heights, nb };
+  lastRes = res;
+  // the server keeps the canvases it produced; a GAN tile has none, so fall back to bytes
+  canvasId = res.canvas_id || null;
+  $('#empty').hidden = true;          // there is a tile on the board now, whatever produced it
+  geoReadouts();
+  syncInpaint(W, H);
+  if (geoMode === 'voxel') ensureGroundTexture(W, H);
+  rebuildBuildings();
+  drawInpaint();
+}
+
+// ---------------------------------------------------------------- clean geometry
+// Tracing, simplification and the regulariser live in regular.js (shared with phase 5).
+// Clean mode is the regulariser with every option off: trace the pixel outlines, simplify
+// with Douglas-Peucker, extrude once per building to the median height of its pixels.
+
+// grid corner (gx, gy) -> shape coords; extrusion happens along local +Z which the mesh
+// rotation turns into world +Y, and local +Y becomes world -Z, hence the sign flip
+function toShapeXY(gx, gy, cell) { return [gx * cell - TILE / 2, -(gy * cell - TILE / 2)]; }
+function shapeOf(poly, cell) {
+  const s = new THREE.Shape(poly.outer.map(([gx, gy]) => new THREE.Vector2(...toShapeXY(gx, gy, cell))));
+  for (const hl of poly.holes) s.holes.push(new THREE.Path(hl.map(([gx, gy]) => new THREE.Vector2(...toShapeXY(gx, gy, cell)))));
+  return s;
+}
+// ---- geometry in metres. Everything the viewer draws, whether it came from the raster
+// (the regulariser's polygons, in tile pixels) or straight from OpenStreetMap (real
+// outlines, in local metres), is converted to the same shape first: a part with an outer
+// ring, holes and a height, in world ground coordinates [x, z].
+const lerpP = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+// The rebuilt window, cut out of the context as a small tile of its own, so regularise
+// works on a few hundred pixels instead of a quarter of a million. `pad` is extra context
+// in pixels, which the tracing needs to close shapes that run to the edge of the fill.
+function cropTile(rect, pad) {
+  const { W, H, fp, hgt, st, gr, heights } = last, cell = TILE / W;
+  const px = (v) => Math.round((v + TILE / 2) / cell);
+  const ox = Math.max(0, px(rect.x0) - pad), oy = Math.max(0, px(rect.z0) - pad);
+  const x1 = Math.min(W, px(rect.x1) + pad), y1 = Math.min(H, px(rect.z1) + pad);
+  const w = Math.max(1, x1 - ox), h = Math.max(1, y1 - oy);
+  if (w >= W && h >= H) return null;
+  const take = (src, Arr) => {
+    const out = new Arr(w * h);
+    for (let y = 0; y < h; y++) out.set(src.subarray((oy + y) * W + ox, (oy + y) * W + ox + w), y * w);
+    return out;
+  };
+  return { ox, oy, tile: { W: w, H: h, fp: take(fp, Uint8Array), hgt: take(hgt, Uint8Array),
+                           st: take(st, Uint8Array), gr: take(gr, Uint8Array),
+                           heights: take(heights, Float32Array), nb: last.nb } };
+}
+function shiftParts(polys, ox, oy) {
+  const f = ([x, y]) => [x + ox, y + oy];
+  return polys.map((p) => ({ ...p, outer: p.outer.map(f), holes: (p.holes || []).map((r) => r.map(f)) }));
+}
+function rasterParts(polys, cell) {
+  const f = ([gx, gy]) => [gx * cell - TILE / 2, gy * cell - TILE / 2];
+  return polys.map((p) => ({ outer: p.outer.map(f), holes: (p.holes || []).map((r) => r.map(f)), h: p.h }));
+}
+function vecParts(list) {
+  const f = ([x, y]) => [x, -y];        // OSM local metres are x east, y north; the board is x, z south
+  return (list || []).map((p) => ({ outer: p.ring.map(f), holes: (p.holes || []).map((r) => r.map(f)), h: p.h }));
+}
+function shapeOfM(p) {
+  const s = new THREE.Shape(p.outer.map(([x, z]) => new THREE.Vector2(x, -z)));
+  for (const hl of (p.holes || [])) s.holes.push(new THREE.Path(hl.map(([x, z]) => new THREE.Vector2(x, -z))));
+  return s;
+}
+function bboxOfRing(r) {
+  let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+  for (const p of r) { x0 = Math.min(x0, p[0]); z0 = Math.min(z0, p[1]); x1 = Math.max(x1, p[0]); z1 = Math.max(z1, p[1]); }
+  return { x0, z0, x1, z1 };
+}
+const rectsOverlap = (a, b) => a.x0 < b.x1 && a.x1 > b.x0 && a.z0 < b.z1 && a.z1 > b.z0;
+const rectInside = (a, b) => a.x0 >= b.x0 && a.x1 <= b.x1 && a.z0 >= b.z0 && a.z1 <= b.z1;
+// Sutherland-Hodgman against an axis-aligned rectangle
+function clipRing(ring, r) {
+  const keep = [(p) => p[0] >= r.x0, (p) => p[0] <= r.x1, (p) => p[1] >= r.z0, (p) => p[1] <= r.z1];
+  const cut = [(a, b) => lerpP(a, b, (r.x0 - a[0]) / (b[0] - a[0])), (a, b) => lerpP(a, b, (r.x1 - a[0]) / (b[0] - a[0])),
+               (a, b) => lerpP(a, b, (r.z0 - a[1]) / (b[1] - a[1])), (a, b) => lerpP(a, b, (r.z1 - a[1]) / (b[1] - a[1]))];
+  let out = ring;
+  for (let k = 0; k < 4 && out.length; k++) {
+    const inp = out; out = [];
+    for (let i = 0; i < inp.length; i++) {
+      const a = inp[i], b = inp[(i + 1) % inp.length];
+      const ia = keep[k](a), ib = keep[k](b);
+      if (ia) out.push(a);
+      if (ia !== ib) out.push(cut[k](a, b));
+    }
+  }
+  return out.length >= 3 ? out : null;
+}
+function clipPartsInside(parts, r) {
+  const out = [];
+  for (const p of parts) {
+    const bb = bboxOfRing(p.outer);
+    if (!rectsOverlap(bb, r)) continue;
+    if (rectInside(bb, r)) { out.push(p); continue; }
+    const o = clipRing(p.outer, r);
+    if (o) out.push({ outer: o, holes: (p.holes || []).filter((hl) => rectInside(bboxOfRing(hl), r)), h: p.h });
+  }
+  return out;
+}
+// everything outside the rectangle: the four slabs around it, so a polygon that straddles
+// the edge keeps the part that is still real city
+function clipPartsOutside(parts, r, B) {
+  const slabs = [{ x0: B.x0, z0: B.z0, x1: r.x0, z1: B.z1 }, { x0: r.x1, z0: B.z0, x1: B.x1, z1: B.z1 },
+                 { x0: r.x0, z0: B.z0, x1: r.x1, z1: r.z0 }, { x0: r.x0, z0: r.z1, x1: r.x1, z1: B.z1 }];
+  const out = [];
+  for (const p of parts) {
+    const bb = bboxOfRing(p.outer);
+    if (!rectsOverlap(bb, r)) { out.push(p); continue; }          // untouched, holes and all
+    if (rectInside(bb, r)) continue;                              // wholly replaced by the fill
+    for (const s of slabs) {
+      if (s.x1 - s.x0 < 0.5 || s.z1 - s.z0 < 0.5 || !rectsOverlap(bb, s)) continue;
+      const o = clipRing(p.outer, s);
+      if (o) out.push({ outer: o, holes: (p.holes || []).filter((hl) => rectInside(bboxOfRing(hl), s)), h: p.h });
+    }
+  }
+  return out;
+}
+// The same two cuts, but against the painted mask instead of its bounding rectangle. Blocks and
+// greens are flat plates, so the generated side takes anything the mask touches at all and the
+// slight overlap with the real plate costs nothing, while a gap would show. Buildings use one
+// majority test on both sides, so every mass belongs to exactly one side: never doubled, never
+// sliced in half at the seam. Streets are already per segment, so they split on the midpoint.
+function seamShape() { return !!(genMask && $('#dif-shape') && $('#dif-shape').checked); }
+function maskAtM(x, z) {
+  if (!genMask || !last) return 0;
+  const cell = TILE / last.W;
+  const ix = Math.floor((x + TILE / 2) / cell), iy = Math.floor((z + TILE / 2) / cell);
+  if (ix < 0 || iy < 0 || ix >= last.W || iy >= last.H) return 0;
+  return genMask[iy * last.W + ix];
+}
+// how much of a part is painted: its ring vertices plus its centroid, which at about 3 m per
+// pixel is plenty to decide which side of the seam a block or a building belongs on
+function maskFrac(p) {
+  let hit = 0, cx = 0, cz = 0;
+  const r = p.outer, n = r.length;
+  if (!n) return 0;
+  for (const v of r) { cx += v[0]; cz += v[1]; if (maskAtM(v[0], v[1])) hit++; }
+  if (maskAtM(cx / n, cz / n)) hit++;
+  return hit / (n + 1);
+}
+const clipPartsInsideMask = (parts, any) => parts.filter((p) => (any ? maskFrac(p) > 0 : maskFrac(p) >= 0.5));
+const clipPartsOutsideMask = (parts) => parts.filter((p) => maskFrac(p) < 0.5);
+function clipLinesMask(lines, inside) {
+  const out = [];
+  for (const ln of lines || []) {
+    const pts = ln.pts;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1];
+      if (!!maskAtM((a[0] + b[0]) / 2, -(a[1] + b[1]) / 2) === !!inside) out.push({ pts: [a, b], w: ln.w });
+    }
+  }
+  return out;
+}
+// the painted area in square metres, for the readout
+function maskAreaM2() {
+  if (!genMask || !last) return 0;
+  const cell = TILE / last.W; let k = 0;
+  for (let i = 0; i < genMask.length; i++) if (genMask[i]) k++;
+  return k * cell * cell;
+}
+function clipLinesOutside(lines, r) {
+  if (!r) return lines;
+  const out = [];
+  for (const ln of lines) {
+    const pts = ln.pts, keep = [];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1];
+      const mx = (a[0] + b[0]) / 2, mz = -(a[1] + b[1]) / 2;
+      if (mx >= r.x0 && mx <= r.x1 && mz >= r.z0 && mz <= r.z1) continue;
+      keep.push([a, b]);
+    }
+    for (const seg of keep) out.push({ pts: seg, w: ln.w });
+  }
+  return out;
+}
+
+const cleanGroup = new THREE.Group(); cleanGroup.rotation.x = -Math.PI / 2; scene.add(cleanGroup);
+const treeGroup = new THREE.Group(); scene.add(treeGroup);     // world space, y up
+// model-board palettes: light is the phase 4 default, dark is the phase 5 animation look
+const BOARDS = {
+  light: { ground: 0xb9b7b2, bld: 0xf4f4f2, st: 0x3a3a3c, gr: 0x6fae45, crown: 0x3f8a36, trunk: 0x6b4f2e, frame: 0x8a8a86,
+           curb: 0xe4e2dc, edge: 0x74767a, floor: 0x9a9a96, centre: 0xf4f1e4 },
+  dark:  { ground: 0x787c80, bld: 0xf2f2ef, st: 0x232528, gr: 0x6aa845, crown: 0x3f8a36, trunk: 0x6b4f2e, frame: 0x3a3e44,
+           curb: 0xd2d6d8, edge: 0x53575b, floor: 0x8d9296, centre: 0xf2efe2 },
+};
+let CLEAN_GROUND = BOARDS.light.ground;
+const cleanMats = {
+  bld: new THREE.MeshStandardMaterial({ color: 0xf4f4f2, roughness: 0.8 }),
+  st: new THREE.MeshStandardMaterial({ color: 0x3a3a3c, roughness: 1 }),
+  gr: new THREE.MeshStandardMaterial({ color: 0x6fae45, roughness: 1 }),
+  blk: new THREE.MeshStandardMaterial({ color: 0xb4b2ad, roughness: 1 }),
+  crown: new THREE.MeshStandardMaterial({ color: 0x3f8a36, roughness: 0.9 }),
+  trunk: new THREE.MeshStandardMaterial({ color: 0x6b4f2e, roughness: 1 }),
+};
+function applyBoard(name) {
+  const b = BOARDS[name] || BOARDS.light;
+  CLEAN_GROUND = b.ground;
+  cleanMats.bld.color.set(b.bld); cleanMats.st.color.set(b.st); cleanMats.gr.color.set(b.gr); cleanMats.blk.color.set(b.ground);
+  cleanMats.crown.color.set(b.crown); cleanMats.trunk.color.set(b.trunk);
+  if (geoMode !== 'voxel') { groundMat.map = null; groundMat.color.set(CLEAN_GROUND); groundMat.needsUpdate = true; }
+}
+const crownGeo = new THREE.SphereGeometry(1, 10, 8);
+const trunkGeo = new THREE.CylinderGeometry(0.22, 0.3, 1, 6); trunkGeo.translate(0, 0.5, 0);
+function clearClean() {
+  clearDetail();
+  for (const m of [...cleanGroup.children]) { cleanGroup.remove(m); m.geometry.dispose(); }
+  for (const m of [...treeGroup.children]) { treeGroup.remove(m); if (m.isInstancedMesh) m.dispose(); }
+}
+// deterministic per-pixel pseudo-random in [0,1): trees stay put when a slider is nudged
+function hash01(i, k) {
+  let x = (Math.imul(i + 1, 374761393) + Math.imul(k + 1, 668265263)) | 0;
+  x = Math.imul(x ^ (x >>> 13), 1274126177) | 0;
+  return ((x ^ (x >>> 16)) >>> 0) / 4294967296;
+}
+
+const TREE_CAP = 12000;          // a kilometre and a half of parks is otherwise six figures
+function buildTrees(W, H, cell, density, hs) {
+  const { fp, st, gr } = last;
+  const pts = [];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = y * W + x;
+    if (gr[i] < 128 || st[i] >= 128 || fp[i] >= 128) continue;
+    if (hash01(i, 0) > density * 0.7) continue;
+    pts.push([x, y, i]);
+  }
+  if (!pts.length) return 0;
+  if (pts.length > TREE_CAP) {   // thin evenly rather than cutting off half the board
+    const keep = TREE_CAP / pts.length;
+    for (let k = pts.length - 1; k >= 0; k--) if (hash01(pts[k][2], 6) > keep) pts.splice(k, 1);
+  }
+  const crown = new THREE.InstancedMesh(crownGeo, cleanMats.crown, pts.length);
+  const trunk = new THREE.InstancedMesh(trunkGeo, cleanMats.trunk, pts.length);
+  const m = new THREE.Matrix4();
+  pts.forEach(([x, y, i], k) => {
+    const jx = (hash01(i, 1) - 0.5) * cell * 0.8, jz = (hash01(i, 2) - 0.5) * cell * 0.8;
+    const wx = (x + 0.5) * cell - TILE / 2 + jx, wz = (y + 0.5) * cell - TILE / 2 + jz;
+    const r = (1.4 + 1.8 * hash01(i, 3)) * hs, th = (1.5 + 2.0 * hash01(i, 4)) * hs;
+    m.makeScale(r, r * (0.85 + 0.3 * hash01(i, 5)), r); m.setPosition(wx, th + r * 0.8, wz); crown.setMatrixAt(k, m);
+    m.makeScale(0.35 * r, th, 0.35 * r); m.setPosition(wx, 0, wz); trunk.setMatrixAt(k, m);
+  });
+  treeGroup.add(crown, trunk);
+  return pts.length;
+}
+// ---- the model look: kerbs along the blocks, a parapet around every roof, storey lines up
+// the walls, corner edges, and dashes down the middle of the streets. Works on parts in
+// metres, so it treats the real OSM outlines and the generated ones the same way.
+const DETAIL = { floorM: 3.2, parapetM: 1.2, insetM: 1.6, dashM: 7, dashGapM: 11, dashW: 0.9 };
+const detailGroup = new THREE.Group(); scene.add(detailGroup);
+function clearDetail() {
+  for (const m of [...detailGroup.children]) { detailGroup.remove(m); m.geometry.dispose(); m.material.dispose(); }
+}
+// every edge moved inward by d and the corners re-intersected; null where it would fold
+function polyInset(ring, d) {
+  const n = ring.length;
+  if (n < 3) return null;
+  let area = 0;
+  for (let i = 0; i < n; i++) { const a = ring[i], b = ring[(i + 1) % n]; area += a[0] * b[1] - b[0] * a[1]; }
+  const s = area > 0 ? 1 : -1, L = [];
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const a = ring[i], b = ring[(i + 1) % n];
+    let dx = b[0] - a[0], dy = b[1] - a[1];
+    const len = Math.hypot(dx, dy); if (len < 1e-6) return null;
+    dx /= len; dy /= len;
+    L.push([a[0] - dy * s * d, a[1] + dx * s * d, dx, dy]);
+    x0 = Math.min(x0, a[0]); y0 = Math.min(y0, a[1]); x1 = Math.max(x1, a[0]); y1 = Math.max(y1, a[1]);
+  }
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const a = L[(i - 1 + n) % n], b = L[i];
+    const det = a[3] * b[2] - a[2] * b[3];
+    if (Math.abs(det) < 1e-6) return null;
+    const t = (-(b[0] - a[0]) * b[3] + (b[1] - a[1]) * b[2]) / det;
+    const px = a[0] + t * a[2], py = a[1] + t * a[3], m = Math.abs(d) + 1;
+    if (px < x0 - m || px > x1 + m || py < y0 - m || py > y1 + m) return null;
+    out.push([px, py]);
+  }
+  return out;
+}
+function ringArea(r) { let a = 0; for (let i = 0; i < r.length; i++) { const p = r[i], q = r[(i + 1) % r.length]; a += p[0] * q[1] - q[0] * p[1]; } return a / 2; }
+function pushRingM(ring, y, arr) {
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i], b = ring[(i + 1) % ring.length];
+    arr.push(a[0], y, a[1], b[0], y, b[1]);
+  }
+}
+function lineMesh(pos, color, opacity) {
+  if (!pos.length) return null;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  return new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: false }));
+}
+function dashGeometry(segs, y, colour) {          // segs: [[ [x,z], [x,z] ], ...] in metres
+  const pos = [], idx = [];
+  const half = DETAIL.dashM / 2, w = DETAIL.dashW / 2, step = DETAIL.dashM + DETAIL.dashGapM;
+  for (const [a, b] of segs) {
+    const dx = b[0] - a[0], dz = b[1] - a[1], len = Math.hypot(dx, dz);
+    if (len < DETAIL.dashM) continue;
+    const ux = dx / len, uz = dz / len, nx = -uz, nz = ux;
+    for (let t = step / 2; t < len; t += step) {
+      const cx = a[0] + ux * t, cz = a[1] + uz * t;
+      const k = pos.length / 3;
+      for (const [su, sv] of [[-half, -w], [half, -w], [half, w], [-half, w]])
+        pos.push(cx + ux * su + nx * sv, y, cz + uz * su + nz * sv);
+      idx.push(k, k + 1, k + 2, k, k + 2, k + 3);
+    }
+  }
+  if (!pos.length) return null;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  return new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: colour, transparent: true, opacity: 0.55, depthWrite: false }));
+}
+// the centre of every street, from the ways themselves when they came from OSM, otherwise
+// by scanning the street mask along the tile's own direction for short runs across it
+function dashSegsFromLines(lines) {
+  return (lines || []).map((l) => l.pts.map(([x, y]) => [x, -y])).flatMap((p) => {
+    const out = []; for (let i = 0; i < p.length - 1; i++) out.push([p[i], p[i + 1]]); return out;
+  });
+}
+function dashSegsFromRaster(W, H, cell, thetaDeg) {
+  const st = last.st, fp = last.fp;
+  const c = Math.cos(thetaDeg * Math.PI / 180), s = Math.sin(thetaDeg * Math.PI / 180);
+  const hx = W / 2, hy = H / 2;
+  const at = (u, v) => {
+    const x = Math.round(hx + u * c - v * s), y = Math.round(hy + u * s + v * c);
+    if (x < 0 || y < 0 || x >= W || y >= H) return 0;
+    const i = y * W + x; return (st[i] >= 128 && fp[i] < 128) ? 1 : 0;
+  };
+  const R = Math.ceil(Math.max(hx, hy) * 1.45), segs = [];
+  const maxW = Math.max(3, 16 / cell), minW = Math.max(1.2, 4 / cell), gap = Math.max(2, Math.round(6 / cell));
+  const toW = (u, v) => [(u * c - v * s) * cell, (u * s + v * c) * cell];
+  for (let axis = 0; axis < 2; axis++) {
+    for (let a = -R; a <= R; a += gap) {
+      let start = -1, run0 = null;
+      for (let b = -R; b <= R + 1; b++) {
+        const on = b <= R ? (axis ? at(b, a) : at(a, b)) : 0;
+        if (on && start < 0) start = b;
+        else if (!on && start >= 0) {
+          const w = b - start;
+          if (w >= minW && w <= maxW) {
+            const m = start + w / 2 - 0.5;
+            const p = axis ? toW(m, a) : toW(a, m), q = axis ? toW(m, a + gap) : toW(a + gap, m);
+            segs.push([p, q]);
+          }
+          start = -1;
+        }
+      }
+    }
+  }
+  return segs;
+}
+function buildDetail(blocks, buildings, dashSegs, hs, plate) {
+  if (!$('#geo-detail').checked) return 0;
+  const B = BOARDS[$('#geo-board').value] || BOARDS.light;
+  const curb = [], floors = [], edges = [], gs = [];
+  const top = plate * 1.3;
+  for (const p of blocks) { pushRingM(p.outer, top + 0.02, curb); for (const h of (p.holes || [])) pushRingM(h, top + 0.02, curb); }
+  const floorH = DETAIL.floorM * hs, para = DETAIL.parapetM * hs;
+  for (const p of buildings) {
+    const h = Math.max(p.h, 0.5) * hs;
+    let inner = (p.holes && p.holes.length) ? null : polyInset(p.outer, DETAIL.insetM);
+    if (inner && Math.abs(ringArea(inner)) < 0.35 * Math.abs(ringArea(p.outer))) inner = null;
+    if (inner) {
+      try {
+        const sh = shapeOfM({ outer: p.outer, holes: [inner] });
+        const g = new THREE.ExtrudeGeometry(sh, { depth: para, bevelEnabled: false });
+        g.translate(0, 0, h); gs.push(g);
+      } catch (e) { /* too small to inset cleanly */ }
+    }
+    const out = polyInset(p.outer, -0.06) || p.outer;
+    for (let y = floorH; y < h - floorH * 0.45; y += floorH) pushRingM(out, y, floors);
+    pushRingM(out, h + (inner ? para : 0) + 0.02, edges);
+    for (const a of out) edges.push(a[0], 0, a[1], a[0], h + (inner ? para : 0), a[1]);
+  }
+  if (gs.length) {
+    const m = new THREE.Mesh(mergeGeometries(gs, false), cleanMats.bld);
+    m.castShadow = true; m.receiveShadow = true; m.rotation.x = -Math.PI / 2;
+    detailGroup.add(m);
+  }
+  const cm = lineMesh(curb, B.curb, 0.55); if (cm) detailGroup.add(cm);
+  const fm = lineMesh(floors, B.floor, 0.3); if (fm) detailGroup.add(fm);
+  const em = lineMesh(edges, B.edge, 0.45); if (em) detailGroup.add(em);
+  const dm = dashGeometry(dashSegs, plate + 0.05, B.centre); if (dm) detailGroup.add(dm);
+  return gs.length;
+}
+function regOptions() {
+  const eps = parseFloat($('#geo-tol').value), minPx = parseInt($('#geo-min').value);
+  if (geoMode !== 'regular') return { axis: 'none', up: 1, open: 0, close: 0, eps, minPx, bld: 'trace', streets: 'trace', green: 'trace', hstep: 0 };
+  return {
+    eps, minPx,
+    axis: $('#rg-axis').value, axisSource: $('#rg-src').value,
+    up: parseInt($('#rg-up').value), open: parseFloat($('#rg-open').value), close: parseFloat($('#rg-close').value),
+    bld: $('#rg-bld').value, minEdge: parseFloat($('#rg-edge').value), boxFill: parseFloat($('#rg-fill').value),
+    minRect: parseInt($('#rg-rect').value), hstep: parseFloat($('#rg-hstep').value),
+    streets: $('#rg-st').value, blocks: $('#rg-blk').value, green: $('#rg-gr').value,
+  };
+}
+
+let lastReg = null;
+// ---- Vector mode: the fit runs on the server (vectorize.py). The result for the current
+// tile and options is cached; while a request is in flight the board shows the last thing
+// it had and rebuilds when the answer arrives.
+let vecCache = null;      // { src: lastRes, key, res }
+let vecPending = null;    // { src, key }
+function vecOptions() {
+  return {
+    axis: $('#vc-axis').value,
+    min_building_m2: parseFloat($('#vc-minb').value), min_hole_m2: parseFloat($('#vc-minb').value) + 10,
+    split_necks: $('#vc-necks').checked, hstep_m: parseFloat($('#vc-hstep').value),
+    chamfer_min_m: $('#vc-chamfer').checked ? 5.0 : 0.0, line_sep_m: parseFloat($('#vc-sep').value),
+    open_px: $('#vc-open').checked ? 1 : 0,
+    street_snap_deg: parseFloat($('#vc-snap').value), spur_m: parseFloat($('#vc-spur').value),
+    street_eps_px: parseFloat($('#vc-seps').value),
+  };
+}
+// One request in flight at a time: dragging a latent slider produces tiles faster than the
+// server can fit them, so only the newest tile is fetched once the current request returns.
+let vecWanted = null;
+function vecResult() {
+  if (!lastRes) return null;
+  const opts = vecOptions(), key = JSON.stringify(opts) + '|' + TILE;
+  if (vecCache && vecCache.src === lastRes && vecCache.key === key) return vecCache.res;
+  if (vecPending && vecPending.src === lastRes && vecPending.key === key) return null;   // already on its way
+  vecWanted = { src: lastRes, key, opts, tile: TILE };
+  if (!vecPending) vecFetch();
+  return null;
+}
+function vecFetch() {
+  const want = vecWanted; vecWanted = null;
+  if (!want) { vecPending = null; return; }
+  vecPending = want;
+  const { src, key, opts, tile } = want;
+  api('/api/vectorize', { channels_b64: src.channels_b64, H: src.H, W: src.W, C: src.C, tile_m: tile, options: opts })
+    .then((res) => {
+      vecCache = { src, key, res }; window.__lastVec = res;
+      if (geoMode === 'vector' && lastRes === src && !vecWanted) buildClean();
+    })
+    .catch((e) => { $('#geo-stat').textContent = 'vectorise failed: ' + e.message; })
+    .finally(() => { vecPending = null; if (vecWanted) vecFetch(); });
+}
+// polylines in tile pixels -> the {pts, w} in local metres (x east, y north) that dashSegsFromLines takes
+function vecLinesM(lines, cell) {
+  return (lines || []).map((l) => ({ pts: l.pts.map(([x, y]) => [x * cell - TILE / 2, -(y * cell - TILE / 2)]), w: l.w }));
+}
+function clipLinesInside(lines, r) {
+  if (!r) return lines;
+  const out = [];
+  for (const ln of lines) {
+    const pts = ln.pts;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1];
+      const mx = (a[0] + b[0]) / 2, mz = -(a[1] + b[1]) / 2;
+      if (mx >= r.x0 && mx <= r.x1 && mz >= r.z0 && mz <= r.z1) out.push({ pts: [a, b], w: ln.w });
+    }
+  }
+  return out;
+}
+// Export what the board shows. With an OpenStreetMap area loaded (VEC) the real outlines go
+// out as they are and the fit only covers the rectangle the model rebuilt; the place's
+// lat/lon travels along so Rhino's EarthAnchorPoint knows where the tile centre is.
+let osmPlace = null;
+function exportName() {
+  if (VEC && osmPlace) return `osm_${osmPlace.lat.toFixed(4)}_${osmPlace.lon.toFixed(4)}`;
+  return lastRes?.real || ('tile_' + $('#seed_a').value);
+}
+async function exportVector(kind, button) {
+  if (!lastRes) return;
+  button.disabled = true;
+  try {
+    const body = { channels_b64: lastRes.channels_b64, H: lastRes.H, W: lastRes.W, C: lastRes.C, tile_m: TILE,
+                   options: vecOptions(), name: exportName() };
+    if (VEC) {
+      body.real = VEC;
+      if (genRect) body.rect = [genRect.x0, -genRect.z1, genRect.x1, -genRect.z0];   // board z is south, export y is north
+      if (osmPlace) body.anchor = { lat: osmPlace.lat, lon: osmPlace.lon };
+    }
+    const r = await fetch('/api/vectorize/' + kind, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error((await r.json()).error || r.statusText);
+    const blob = await r.blob();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = exportName() + '.' + kind; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  } catch (e) { $('#geo-stat').textContent = kind + ' export failed: ' + e.message; }
+  button.disabled = false;
+}
+$('#vc-geojson').onclick = () => exportVector('geojson', $('#vc-geojson'));
+$('#vc-3dm').onclick = () => exportVector('3dm', $('#vc-3dm'));
+
+// What the board shows. An area loaded from OpenStreetMap arrives as real geometry (VEC):
+// true outlines, true heights, blocks that are the exact complement of the street bands. The
+// raster is only what the model reads, so it is drawn for the part that the model generated,
+// inside the selection, and the real geometry is clipped away there. Without VEC (a
+// generated tile or a reference tile) everything comes from the raster, as before.
+function buildClean() {
+  if (!last) return;
+  const t0 = performance.now();
+  const { H, W } = last;
+  const cell = TILE / W, hs = parseFloat($('#hscale').value), plate = parseFloat($('#geo-plate').value);
+  clearClean();
+  const B = { x0: -TILE / 2, z0: -TILE / 2, x1: TILE / 2, z1: TILE / 2 };
+  const rect = VEC ? genRect : null;                       // the part the model rebuilt
+  const shape = !!rect && seamShape();                     // follow the painted mask, not its box
+  const stat = [];
+  let blocks = [], greens = [], buildings = [], dashSegs = [], R = null;
+
+  if (VEC) {
+    const keep = (parts) => (!rect ? parts : shape ? clipPartsOutsideMask(parts) : clipPartsOutside(parts, rect, B));
+    blocks = keep(vecParts(VEC.blocks));
+    greens = keep(vecParts(VEC.greens));
+    buildings = keep(vecParts(VEC.buildings));
+    dashSegs = dashSegsFromLines(shape ? clipLinesMask(VEC.centrelines, false) : clipLinesOutside(VEC.centrelines, rect));
+    stat.push(`${VEC.buildings.length} OSM buildings`);
+  }
+  if ((!VEC || rect) && geoMode === 'vector') {
+    const V = vecResult();
+    const cut = (parts, any) => (!rect ? parts : shape ? clipPartsInsideMask(parts, any) : clipPartsInside(parts, rect));
+    if (!V) {
+      stat.push('vectorising on the server…');
+    } else {
+      blocks = blocks.concat(cut(rasterParts(V.blocks, cell), true));
+      greens = greens.concat(cut(rasterParts(V.greens, cell), true));
+      buildings = buildings.concat(cut(rasterParts(V.buildings, cell), false));
+      if ($('#vc-lines').checked) {
+        const lines = vecLinesM(V.streets, cell);
+        dashSegs = dashSegs.concat(dashSegsFromLines(shape ? clipLinesMask(lines, true) : rect ? clipLinesInside(lines, rect) : lines));
+      }
+      const rt = V.roundtrip || {};
+      stat.push(`${V.buildings.length} buildings, ${V.streets.length} streets, ${V.blocks.length} blocks, ${V.greens.length} greens (${V.ms} ms)`);
+      if (rt.iou_footprint !== undefined) stat.push(`fit IoU footprint ${rt.iou_footprint.toFixed(2)}, street ${rt.iou_street.toFixed(2)}, green ${rt.iou_green.toFixed(2)}`);
+      const ao = $('#vc-axis-out');
+      ao.textContent = `${V.axis.deg.toFixed(1)}°`;
+      ao.title = `tile axis ${V.axis.deg.toFixed(1)} degrees (confidence ${V.axis.conf.toFixed(2)}); per building: ${V.stats.own_axis} own, ${V.stats.street_axis} from the nearest street, ${V.stats.tile_axis} tile`;
+    }
+  } else if (!VEC || rect) {
+    const o = regOptions();
+    // The raster pipeline exists to turn what the model made back into geometry. Real
+    // OpenStreetMap arrives as geometry already, so on a context of real city there is
+    // nothing here to do, and when there is a fill, only the window it landed in gets
+    // traced. Tracing a kilometre and a half of city to recover one 300 m plot would be
+    // most of a minute of pure waste.
+    const sub = (VEC && rect) ? cropTile(rect, 6) : null;
+    try { R = regularise(sub ? sub.tile : last, o); }
+    catch (e) { console.error(e); $('#geo-stat').textContent = 'regularise failed: ' + e.message; return; }
+    lastReg = R; window.__lastReg = R;
+    const off = sub ? (polys) => shiftParts(polys, sub.ox, sub.oy) : (polys) => polys;
+    const cut = (parts, any) => (!rect ? parts : shape ? clipPartsInsideMask(parts, any) : clipPartsInside(parts, rect));
+    blocks = blocks.concat(cut(rasterParts(off(R.blocks), cell), true));
+    greens = greens.concat(cut(rasterParts(off(R.greens), cell), true));
+    buildings = buildings.concat(cut(rasterParts(off(R.buildings), cell), false));
+    if (!VEC) dashSegs = dashSegsFromRaster(W, H, cell, R.axis?.deg || 0);
+    const s = R.stats;
+    stat.push(`${R.buildings.length} generated parts (${s.traced} traced, ${s.rects} rects, ${s.boxes} boxes)`
+      + (sub ? `, traced over ${sub.tile.W} of ${W} px` : ''));
+  }
+  window.__scene = { scene, camera, controls, detailGroup, cleanGroup, treeGroup, last, get TILE() { return TILE; },
+    get mask() { return inpMask; },
+    syncMask() { maskBoxStale = true; drawInpaint(); showSelBox(); } };
+
+  const extrude = (parts, depthOf, lift, cast) => {
+    const gs = [];
+    for (const p of parts) {
+      try {
+        const g = new THREE.ExtrudeGeometry(shapeOfM(p), { depth: Math.max(depthOf(p), 0.01), bevelEnabled: false });
+        if (lift) g.translate(0, 0, lift);
+        gs.push(g);
+      } catch (e) { /* a degenerate polygon: skip it rather than lose the tile */ }
+    }
+    if (!gs.length) return null;
+    const m = new THREE.Mesh(mergeGeometries(gs, false), null);
+    m.castShadow = !!cast; m.receiveShadow = true;
+    return m;
+  };
+  const gb = extrude(buildings, (p) => Math.max(p.h, 0.5) * hs, 0, true);
+  if (gb) { gb.material = cleanMats.bld; cleanGroup.add(gb); }
+  if (plate > 0) {
+    const g = new THREE.Mesh(new THREE.BoxGeometry(TILE, TILE, plate), cleanMats.st);   // the street surface
+    g.position.z = plate / 2; g.receiveShadow = true; cleanGroup.add(g);
+    const gk = extrude(blocks, () => plate * 1.3);
+    if (gk) { gk.material = cleanMats.blk; cleanGroup.add(gk); }
+    const gg = extrude(greens, () => 0.12, plate * 1.3);
+    if (gg) { gg.material = cleanMats.gr; cleanGroup.add(gg); }
+  }
+  const nPara = buildDetail(blocks, buildings, dashSegs, hs, plate);
+  const nt = buildTrees(W, H, cell, parseFloat($('#geo-trees').value), hs);
+  if (rect) stat.unshift(shape ? `${Math.round(maskAreaM2()).toLocaleString()} m\u00b2 rebuilt, drawn shape`
+                               : `${Math.round(rect.x1 - rect.x0)} x ${Math.round(rect.z1 - rect.z0)} m rebuilt`);
+  if (nPara) stat.push(`${nPara} parapets`);
+  stat.push(`${nt} trees`, `${(performance.now() - t0).toFixed(0)} ms`);
+  renderer.shadowMap.needsUpdate = true;
+  $('#geo-stat').textContent = stat.join(', ');
+  const ao = $('#rg-axis-out');
+  ao.textContent = R && regOptions().axis !== 'none' ? `${R.axis.deg.toFixed(1)}°` : '';
+  ao.title = R ? `dominant axis ${R.axis.deg.toFixed(1)} degrees, confidence ${R.axis.conf.toFixed(2)} (1 = every edge on one grid)` : '';
+}
+let geoMode = 'voxel';
+function setGeoMode(mode) {
+  geoMode = mode;
+  for (const m of ['voxel', 'clean', 'regular', 'vector']) $('#geo-' + m).classList.toggle('on', mode === m);
+  $('#geo-reg').hidden = mode !== 'regular';
+  $('#geo-vec').hidden = mode !== 'vector';
+  if (buildings) buildings.visible = mode === 'voxel';
+  cleanGroup.visible = treeGroup.visible = detailGroup.visible = mode !== 'voxel';
+  // in clean and regular mode the plates carry the colour, so the ground becomes a plain model-board colour
+  if (mode !== 'voxel') { groundMat.map = null; groundMat.color.set(CLEAN_GROUND); groundMat.needsUpdate = true; }
+  else if (groundTex) { groundMat.map = groundTex; groundMat.color.set(0xffffff); groundMat.needsUpdate = true; }
+  try { localStorage.setItem('geoMode', mode); } catch (e) {}
+  rebuildBuildings();
+}
+
+function rebuildBuildings() {
+  if (!last) return;
+  if (geoMode !== 'voxel') { buildClean(); return; }
+  const { H, W, fp, heights, nb } = last;
+  const cell = TILE / W, hs = parseFloat($('#hscale').value), gap = parseFloat($('#gap').value);
+  const size = cell * (1 - gap);
+  ensureInstances(nb);
+  const m = new THREE.Matrix4(), col = new THREE.Color();
+  let k = 0;
+  // colour ramp by height: low = darker warm grey, high = near white
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = y * W + x;
+    if (fp[i] < 128) continue;
+    const h = Math.max(heights[i], 0.5) * hs;
+    m.makeScale(size, h, size);
+    m.setPosition((x + 0.5) * cell - TILE / 2, 0, (y + 0.5) * cell - TILE / 2);
+    buildings.setMatrixAt(k, m);
+    const t = Math.min(1, (heights[i] - state.height_map.h_min) / (60 - state.height_map.h_min));
+    col.setHSL(0.08, 0.05, 0.42 + 0.5 * t);
+    buildings.setColorAt(k, col);
+    k++;
+  }
+  buildings.count = k;
+  buildings.instanceMatrix.needsUpdate = true;
+  if (buildings.instanceColor) buildings.instanceColor.needsUpdate = true;
+  renderer.shadowMap.needsUpdate = true;
+}
+
+const PANEL_METRICS = ['far_proxy', 'coverage_pct', 'green_pct', 'street_pct', 'mean_height_m', 'max_height_m',
+  'street_length_m', 'intersections', 'building_count', 'mean_footprint_m2', 'block_count', 'mean_block_m2'];
+
+function fmt(key, v) {
+  const info = state?.metric_info?.[key] || { label: key, unit: '', decimals: 2 };
+  if (v === undefined || v === null) return '';
+  const s = Number(v).toFixed(info.decimals);
+  return info.unit ? `${s} ${info.unit}` : s;
+}
+function label(key) { return state?.metric_info?.[key]?.label || key; }
+
+function drawMetrics(m, res) {
+  if (!res.real && res.ms_infer) lastGenMs = res.ms_infer;
+  const tg = currentTargets();
+  const rows = PANEL_METRICS.filter((k) => k in m).map((k) => {
+    let extra = '';
+    if (k in tg) {
+      const hit = Math.abs(m[k] - tg[k]) <= Math.max(Math.abs(tg[k]), 1e-9) * 0.03 + 1e-9;
+      extra = ` <span class="tgt ${hit ? '' : 'miss'}">(target ${fmt(k, tg[k])})</span>`;
+    }
+    return `<div><span>${label(k)}</span><span>${fmt(k, m[k])}${extra}</span></div>`;
+  });
+  $('#metrics').innerHTML = rows.join('');
+  const solve = res.target_iters ? `, ${res.target_iters} solver step${res.target_iters === 1 ? '' : 's'}${res.target_converged ? '' : ', not converged'}` : '';
+  $('#latency').textContent = res.real
+    ? `real tile ${res.real}, ${res.W}x${res.H}, encoded in ${res.ms_infer} ms`
+    : `${res.ms_infer} ms inference${solve}, ${res.W}x${res.H}` + (res.w_norm ? `, |w| ${res.w_norm.toFixed(1)}` : '');
+  // per-row achieved readout in the targets section
+  for (const row of document.querySelectorAll('#targets .trow')) {
+    const k = row.dataset.name, got = row.querySelector('.got');
+    if (k in tg && k in (res.achieved || {})) {
+      const a = res.achieved[k];
+      const hit = Math.abs(a - tg[k]) <= Math.max(Math.abs(tg[k]), 1e-9) * 0.03 + 1e-9;
+      got.textContent = fmt(k, a); got.className = 'got ' + (hit ? 'hit' : 'miss');
+    } else { got.textContent = k in m ? fmt(k, m[k]) : ''; got.className = 'got'; }
+  }
+}
+
+function currentTargets() {
+  const t = {};
+  for (const inp of document.querySelectorAll('#targets input[type=number]')) {
+    if (inp.value !== '' && Number.isFinite(+inp.value)) t[inp.dataset.name] = +inp.value;
+  }
+  return t;
+}
+
+// ---------------------------------------------------------------- inpaint
+// The mask is painted at tile resolution and sent to the server with the tile it belongs
+// to, so a fill can be chained on top of the previous one and works the same on a
+// generated tile and on a real reference tile.
+
+function syncInpaint(W, H) {
+  const c = $('#inp-c');
+  if (c.width !== W || c.height !== H || !inpMask) {
+    c.width = W; c.height = H;
+    inpMask = new Uint8Array(W * H); maskReset(null);
+  }
+  // the latent search runs the generator itself, so it only works at its own resolution;
+  // the diffusion inpainter crops its own window out of any canvas
+  const fits = !!state?.loaded && W === state.res && H === state.res;
+  const b = $('#inp-fill');
+  if (b) {
+    b.disabled = !fits;
+    b.title = fits ? '' : `the latent search needs a ${state?.res || 128} px tile; this canvas is ${W} px`;
+  }
+}
+function drawInpaint() {
+  const c = $('#inp-c'); if (!inpMask) return;
+  if ($('#paint-tools').hidden) return;   // nothing is looking at it
+  const W = c.width, H = c.height, ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, W, H);
+  ctx.drawImage($('#c-pal'), 0, 0, W, H);
+  const img = ctx.getImageData(0, 0, W, H);
+  const d = img.data;
+  const rect = inpRect;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = y * W + x;
+    let on = inpMask[i];
+    if (rect && x >= rect.x0 && x <= rect.x1 && y >= rect.y0 && y <= rect.y1) on = rect.erase ? 0 : 1;
+    if (!on) continue;
+    // wash the masked area toward a light blue so it reads as "to be rebuilt" over red streets
+    d[4 * i] = d[4 * i] * 0.25 + 90; d[4 * i + 1] = d[4 * i + 1] * 0.25 + 150; d[4 * i + 2] = d[4 * i + 2] * 0.25 + 220;
+  }
+  ctx.putImageData(img, 0, 0);
+  if (typeof showSelBox === 'function') showSelBox();
+}
+function paintAt(x, y, erase) {
+  const c = $('#inp-c'), W = c.width, H = c.height;
+  const r = parseInt($('#inp-size').value) / 2;
+  const v = erase ? 0 : 1;
+  for (let dy = -Math.ceil(r); dy <= Math.ceil(r); dy++) for (let dx = -Math.ceil(r); dx <= Math.ceil(r); dx++) {
+    if (dx * dx + dy * dy > r * r) continue;
+    const px = Math.round(x) + dx, py = Math.round(y) + dy;
+    if (px < 0 || py < 0 || px >= W || py >= H) continue;
+    inpMask[py * W + px] = v;
+    if (v) maskTouch(px, py); else maskBoxStale = true;
+  }
+}
+function inpXY(e) {
+  const c = $('#inp-c'), b = c.getBoundingClientRect();
+  return [(e.clientX - b.left) / b.width * c.width, (e.clientY - b.top) / b.height * c.height];
+}
+(function inpaintPointer() {
+  const c = $('#inp-c');
+  let down = false, start = null;
+  c.addEventListener('pointerdown', (e) => {
+    if (!inpMask) return;
+    c.setPointerCapture(e.pointerId); down = true;
+    const [x, y] = inpXY(e);
+    const erase = inpTool === 'erase' || e.button === 2 || e.altKey;
+    if (inpTool === 'rect') { start = [x, y, erase]; inpRect = { x0: x | 0, y0: y | 0, x1: x | 0, y1: y | 0, erase }; }
+    else paintAt(x, y, erase);
+    drawInpaint();
+  });
+  c.addEventListener('pointermove', (e) => {
+    if (!down) return;
+    const [x, y] = inpXY(e);
+    if (inpTool === 'rect' && start) {
+      inpRect = { x0: Math.min(start[0], x) | 0, y0: Math.min(start[1], y) | 0,
+                  x1: Math.max(start[0], x) | 0, y1: Math.max(start[1], y) | 0, erase: start[2] };
+    } else paintAt(x, y, inpTool === 'erase' || e.buttons === 2 || e.altKey);
+    drawInpaint();
+  });
+  const end = () => {
+    if (!down) return;
+    down = false;
+    if (inpRect) {   // commit the preview rectangle
+      const W = c.width;
+      for (let y = inpRect.y0; y <= inpRect.y1; y++) for (let x = inpRect.x0; x <= inpRect.x1; x++)
+        if (x >= 0 && y >= 0 && x < W && y < c.height) {
+          inpMask[y * W + x] = inpRect.erase ? 0 : 1;
+          if (inpRect.erase) maskBoxStale = true; else maskTouch(x, y);
+        }
+      inpRect = null;
+    }
+    start = null;
+    drawInpaint(); showSelBox(); selectionChanged();
+  };
+  c.addEventListener('pointerup', end);
+  c.addEventListener('pointercancel', end);
+  c.addEventListener('contextmenu', (e) => e.preventDefault());
+})();
+
+function b64FromBytes(arr) {
+  let s = '';
+  for (let i = 0; i < arr.length; i += 8192) s += String.fromCharCode.apply(null, arr.subarray(i, i + 8192));
+  return btoa(s);
+}
+function maskedPct() {
+  if (!inpMask) return 0;
+  let n = 0; for (let i = 0; i < inpMask.length; i++) n += inpMask[i];
+  return 100 * n / inpMask.length;
+}
+
+async function doFill() {
+  if (!lastRes || !inpMask || inpBusy) return;
+  if (maskedPct() <= 0) { $('#inp-stat').textContent = 'choose an area first, in Selection below'; return; }
+  inpBusy = true; $('#inp-fill').disabled = true;
+  const steps = parseInt($('#inp-steps').value);
+  $('#inp-stat').textContent = `filling ${maskedPct().toFixed(1)} % of the tile, ${steps} steps...`;
+  const prev = lastRes;
+  try {
+    const res = await api('/api/inpaint', {
+      channels_b64: lastRes.channels_b64,
+      mask_b64: b64FromBytes(inpMask),
+      city_a: parseInt($('#city_a').value) || 0, city_b: parseInt($('#city_b').value) || 0,
+      city_mix: parseFloat($('#city_mix').value),
+      steps, w_reg: parseFloat($('#inp-reg').value), feather: parseInt($('#inp-feather').value),
+      context: parseFloat($('#inp-context').value), focus: parseInt($('#inp-focus').value), seam: 6.0,
+    });
+    inpUndo = prev; $('#msk-undo').disabled = false;
+    inpMask.fill(0); maskReset(null);
+    drawTile(res); drawMetrics(res.metrics, res);
+    const inf = res.inpaint;
+    $('#inp-stat').textContent = `filled ${inf.filled_pct} % in ${(inf.ms / 1000).toFixed(1)} s, ${inf.steps} steps, match ${inf.loss}`;
+    $('#latency').textContent = `inpainted ${inf.filled_pct} % of the tile, ${inf.steps} steps in ${(inf.ms / 1000).toFixed(1)} s`;
+  } catch (e) {
+    $('#inp-stat').textContent = e.message;
+  } finally {
+    inpBusy = false; $('#inp-fill').disabled = false;
+  }
+}
+$('#inp-fill').onclick = doFill;
+$('#msk-clear').onclick = () => {
+  if (inpMask) inpMask.fill(0);
+  maskReset(null);
+  inpRect = null; drawInpaint(); selBox.visible = false;
+  $('#msk-stat').textContent = ''; $('#msk-win').textContent = ''; $('#msk-win').className = '';
+};
+$('#msk-undo').onclick = () => {
+  if (!inpUndo) return;
+  const back = inpUndo; inpUndo = null; $('#msk-undo').disabled = true;
+  if (undoVec) { VEC = undoVec.vec; genRect = undoVec.rect; genMask = undoVec.mask || null; undoVec = null; }
+  drawTile(back); drawMetrics(back.metrics, back);
+  $('#msk-stat').textContent = 'reverted to the tile before the last fill';
+};
+for (const [id, tool] of [['#inp-brush', 'brush'], ['#inp-rect', 'rect'], ['#inp-erase', 'erase']]) {
+  $(id).onclick = () => {
+    inpTool = tool;
+    for (const [i2] of [['#inp-brush'], ['#inp-rect'], ['#inp-erase']]) $(i2).classList.toggle('on', i2 === id);
+  };
+}
+for (const id of ['#inp-size', '#inp-steps', '#inp-reg', '#inp-feather', '#inp-context', '#inp-focus']) {
+  const e = $(id);
+  e.addEventListener('input', () => {
+    const o = document.querySelector(`output[for=${id.slice(1)}]`);
+    if (o) o.textContent = id === '#inp-reg' ? (+e.value).toFixed(3) : id === '#inp-context' ? (+e.value).toFixed(2) : e.value;
+  });
+}
+
+// ---------------------------------------------------------------- the diffusion inpainter
+// A second, separate model (phase 6): it sees the fabric around the mask and the metrics
+// asked for, and generates what is missing. Nothing here touches the GAN, so it works the
+// same on a generated tile, a reference tile and an area loaded from OpenStreetMap.
+let dif = null;                 // /api/dif/state
+let difBusy = false, osmBusy = false, osmPoll = null, canvasId = null;
+
+function difTargets() {
+  const out = {};
+  for (const row of document.querySelectorAll('#dif-targets .trow2')) {
+    const asked = !row.classList.contains('asis');     // untouched rows are left to the model
+    out[row.dataset.name] = asked ? parseFloat(row.querySelector('input[type=range]').value) / (+row.dataset.scale) : null;
+  }
+  return out;
+}
+function buildDifTargets(st) {
+  const box = $('#dif-targets'); box.innerHTML = '';
+  for (const name of st.metrics) {
+    const u = st.metric_ui[name];
+    const row = document.createElement('div');
+    row.className = 'trow2 asis'; row.dataset.name = name; row.dataset.scale = u.scale; row.dataset.dec = u.dec;
+    row.innerHTML = `<label title="${name}">${u.label}</label>
+      <input type="range" min="${u.min}" max="${u.max}" step="${u.step}" value="${(u.min + u.max) / 2}">
+      <span class="val"></span>
+      <button class="rst" title="back to what the area measures, and let the model decide">&#8634;</button>
+      <span class="got"></span>`;
+    const rng = row.querySelector('input[type=range]'), rst = row.querySelector('.rst');
+    const show = () => { row.querySelector('.val').textContent = (+rng.value).toFixed(u.dec) + (u.unit ? ' ' + u.unit : ''); };
+    rng.addEventListener('input', () => { row.classList.remove('asis'); show(); });
+    rst.addEventListener('click', () => { row.classList.add('asis'); if (row.dataset.asis) rng.value = row.dataset.asis; show(); });
+    show();
+    box.appendChild(row);
+  }
+}
+// the resting position of every slider: what the current selection actually measures. Called
+// after a fetch and after a fill, and it only moves the rows the user has not taken over.
+function difAsIs(metrics) {
+  if (!metrics) return;
+  for (const row of document.querySelectorAll('#dif-targets .trow2')) {
+    const v = metrics[row.dataset.name];
+    if (v === undefined || v === null) continue;
+    const sc = +row.dataset.scale, rng = row.querySelector('input[type=range]');
+    row.dataset.asis = String(v * sc);
+    if (row.classList.contains('asis')) {
+      rng.value = String(v * sc);
+      row.querySelector('.val').textContent = (+rng.value).toFixed(+row.dataset.dec)
+        + (dif.metric_ui[row.dataset.name].unit ? ' ' + dif.metric_ui[row.dataset.name].unit : '');
+    }
+  }
+}
+// after a fill: put the measured value under each slider, and where a target was asked
+// for, say how close it landed
+function difReport(info) {
+  for (const row of document.querySelectorAll('#dif-targets .trow2')) {
+    const name = row.dataset.name, got = info.achieved?.[name], want = info.targets?.[name];
+    const el = row.querySelector('.got'), dec = +row.dataset.dec, sc = +row.dataset.scale;
+    if (got === undefined) { el.textContent = ''; continue; }
+    const u = dif.metric_ui[name];
+    el.textContent = `measured ${(got * sc).toFixed(dec)}${u.unit ? ' ' + u.unit : ''}`;
+    el.className = 'got';
+    if (want !== undefined && want !== null) {
+      const rel = Math.abs(got - want) / Math.max(Math.abs(want), 1e-3);
+      el.textContent += `  (asked ${(want * sc).toFixed(dec)})`;
+      el.classList.add(rel <= 0.12 ? 'hit' : 'miss');
+    }
+  }
+}
+// ---- the diagnostic. Two questions the sliders cannot answer on their own: whether the
+// request reaches the model at all, and what the model can produce here without being asked.
+function diagBar(sp, want) {
+  const lo = Math.min(sp.min, want ?? sp.min), hi = Math.max(sp.max, want ?? sp.max);
+  const pad = Math.max((hi - lo) * 0.08, 1e-9);
+  const a = lo - pad, b = hi + pad;
+  const at = (v) => 100 * (v - a) / Math.max(b - a, 1e-9);
+  const px = (v) => at(v).toFixed(1) + '%';
+  const wd = (v0, v1) => Math.max(0.6, at(v1) - at(v0)).toFixed(1) + '%';
+  const outside = want != null && (want < sp.min || want > sp.max);
+  return `<div class="bar">`
+    + `<s style="left:${px(sp.min)}; width:${wd(sp.min, sp.max)}"></s>`
+    + `<i style="left:${px(sp.p25)}; width:${wd(sp.p25, sp.p75)}"></i>`
+    + `<b style="left:${px(sp.median)}" title="median"></b>`
+    + (want == null ? '' : `<u class="${outside ? 'out' : ''}" style="left:${px(want)}" title="asked for"></u>`)
+    + `</div>`;
+}
+function difDiag(d) {
+  const box = $('#dif-diag'); box.hidden = false;
+  const w = d.wired, sc = w.scale, u = w.unit ? ' ' + w.unit : '';
+  const say = {
+    live: `The condition is live. Asking for ${w.label} at ${(w.asked_low * sc).toFixed(0)}${u} gave ${(w.got_low * sc).toFixed(1)}${u}, at ${(w.asked_high * sc).toFixed(0)}${u} gave ${(w.got_high * sc).toFixed(1)}${u}. The network is using the request, so the sliders are worth pushing with guidance.`,
+    weak: `The condition reaches the network but barely moves it: both ends of ${w.label} landed within ${(w.moved * sc).toFixed(1)}${u} of each other, under a quarter of the spread the model normally shows. Raise guidance, turn on pull to target, or use best of.`,
+    dead: `The condition is doing nothing at all: both ends of ${w.label} produced an identical fill, pixel for pixel. That is a wiring problem, not a model problem. Pull to target will still work, because it does not go through the network.`,
+  }[w.verdict];
+  let html = `<div class="verdict ${w.verdict}">${say}</div>`;
+  html += `<div class="note">What the model produces here on its own, over ${d.n} seeds with nothing asked for. The line is everything it produced, the block the middle half, the tick the median, the red mark what you asked for. A red tick outside the bar is a request the model has never made in a place like this.</div>`;
+  for (const name of dif.metrics) {
+    const sp = d.spread[name], ui = dif.metric_ui[name];
+    const want = d.targets[name] ?? null;
+    const outside = want != null && (want < sp.min || want > sp.max);
+    html += `<div class="srow"><span title="${name}">${ui.label}</span>`
+      + diagBar(sp, want)
+      + `<span class="num${outside ? ' out' : ''}" title="${outside ? 'you asked for ' + (want * ui.scale).toFixed(ui.dec) + ', outside anything the model produced here' : 'the range over ' + d.n + ' free samples'}">`
+      + `${(sp.min * ui.scale).toFixed(ui.dec)} to ${(sp.max * ui.scale).toFixed(ui.dec)}${ui.unit ? ' ' + ui.unit : ''}</span></div>`;
+  }
+  box.innerHTML = html;
+}
+// the candidates of a best-of run, cheapest possible readout: how far each landed from the ask
+function difCandidates(i) {
+  if (!i.candidates?.length) return;
+  const keys = Object.keys(i.targets || {});
+  if (!keys.length) return;
+  const k = keys[0], ui = dif.metric_ui[k];
+  const vals = i.candidates.map((c) => c.metrics[k]);
+  const line = vals.map((v, j) => `${j === i.picked ? '[' : ''}${(v * ui.scale).toFixed(ui.dec)}${j === i.picked ? ']' : ''}`).join('  ');
+  const el = $('#dif-cands'); el.hidden = false;
+  el.innerHTML = `<div class="note"><b>${i.best_of} seeds, ${ui.label} in each</b></div>`
+    + `<div class="list">${line}</div>`
+    + `<div class="note">asked ${(i.targets[k] * ui.scale).toFixed(ui.dec)}${ui.unit ? ' ' + ui.unit : ''}, kept the one in brackets (seed ${i.seed}). `
+    + `The width of that list is what this model can do here by luck alone.</div>`;
+}
+async function difProbe() {
+  if (!lastRes || !inpMask || difBusy || !dif?.loaded) return;
+  if (!maskRect()) { $('#dif-stat').textContent = 'choose an area first: drag a rectangle on the ground in the 3D view'; return; }
+  difBusy = true; $('#dif-probe').disabled = true; $('#dif-fill').disabled = true;
+  const t = difTargets(), first = Object.keys(t).find((k) => t[k] !== null);
+  $('#dif-stat').className = '';
+  $('#dif-stat').textContent = 'diagnosing: sampling this area a dozen times...';
+  pollProgress(true);
+  try {
+    const d = await api('/api/dif/probe', {
+      H: last.H, W: last.W, tile_m: TILE,
+      canvas_id: canvasId, channels_b64: canvasId ? undefined : lastRes.channels_b64,
+      mask_b64: b64FromBytes(inpMask),
+      targets: t, metric: first || 'far',
+      steps: Math.min(30, parseInt($('#dif-steps').value)), cfg: parseFloat($('#dif-cfg').value),
+      n: 12, seed: parseInt($('#dif-seed').value) || 0, keep_streets: $('#dif-keepst').checked,
+    });
+    difDiag(d);
+    $('#dif-stat').textContent = `diagnosed in ${(d.ms / 1000).toFixed(1)} s  ·  ${d.n} free samples + 2 at the ends of ${d.wired.label}`;
+  } catch (e) {
+    $('#dif-stat').textContent = e.message; $('#dif-stat').className = 'err';
+  } finally {
+    difBusy = false; $('#dif-probe').disabled = false; $('#dif-fill').disabled = false; pollProgress(false);
+  }
+}
+$('#dif-probe').onclick = difProbe;
+
+function difState(st) {
+  dif = st;
+  const sel = $('#dif-ckpt'); const cur = sel.value; sel.innerHTML = '';
+  for (const c of st.checkpoints) { const o = document.createElement('option'); o.value = c.path; o.textContent = c.name; sel.appendChild(o); }
+  if (!st.checkpoints.length) { const o = document.createElement('option'); o.textContent = 'no .pt found: start the server with --inpaint'; sel.appendChild(o); }
+  if (cur && st.checkpoints.some((c) => c.path === cur)) sel.value = cur;
+  else if (st.path) sel.value = st.path;
+  const ss = $('#dif-status');
+  ss.className = 'status';
+  ss.textContent = st.loaded
+    ? `${st.name}  (${st.params} M params, step ${st.step.toLocaleString()}, windows ${st.window_m[0]} to ${st.window_m[1]} m)`
+    : 'No inpainter loaded. Pick a checkpoint and press Load.';
+  $('#dif-fill').disabled = !st.loaded;
+  if (st.loaded && !$('#dif-targets').children.length) buildDifTargets(st);
+}
+$('#dif-rescan').onclick = async () => { try { difState(await api('/api/dif/state')); } catch (e) { $('#dif-status').textContent = e.message; } };
+$('#dif-load').onclick = async () => {
+  const path = $('#dif-ckpt').value; if (!path) return;
+  $('#dif-status').textContent = `loading ${path.split(/[\\/]/).pop()}...`; $('#dif-status').className = 'status';
+  try { difState(await api('/api/dif/load', { path })); }
+  catch (e) { $('#dif-status').textContent = e.message; $('#dif-status').className = 'status err'; }
+};
+
+async function difFill() {
+  if (!lastRes || !inpMask || difBusy || !dif?.loaded) return;
+  if (!maskRect()) { $('#dif-stat').textContent = 'choose an area first: drag a rectangle on the ground in the 3D view'; return; }
+  difBusy = true; $('#dif-fill').disabled = true;
+  const steps = parseInt($('#dif-steps').value);
+  const r0 = maskRect();
+  $('#dif-stat').className = '';
+  $('#dif-stat').textContent = `rebuilding ${Math.round(r0.x1 - r0.x0)} x ${Math.round(r0.z1 - r0.z0)} m, ${steps} steps...`;
+  const prev = lastRes, rect = maskRect();
+  pollProgress(true);
+  try {
+    const res = await api('/api/dif/fill', {
+      H: last.H, W: last.W, tile_m: TILE, canvas_id: canvasId,
+      channels_b64: canvasId ? undefined : lastRes.channels_b64,
+      mask_b64: b64FromBytes(inpMask),
+      targets: difTargets(),
+      steps, cfg: parseFloat($('#dif-cfg').value), resample: parseInt($('#dif-resample').value),
+      seed: parseInt($('#dif-seed').value) || 0, keep_streets: $('#dif-keepst').checked,
+      guide: parseFloat($('#dif-guide').value), best_of: parseInt($('#dif-bestof').value) || 1,
+    });
+    inpUndo = prev; undoVec = { vec: VEC, rect: genRect, mask: genMask }; $('#msk-undo').disabled = false;
+    genRect = rect;                       // from here the real geometry stops and the model's starts
+    genMask = inpMask.slice();            // and the shape of it, for the drawn-shape seam
+    showSelBox();                         // the selection stays: change a slider and fill it again
+    drawTile(res); drawMetrics(res.metrics, res);
+    difAsIs(res.dif && res.dif.achieved);
+    const i = res.dif;
+    difLastMs = i.ms; difLastSteps = i.steps || 40;
+    difReport(i);
+    $('#dif-stat').textContent = `filled ${i.selection_ha ?? '?'} ha in ${(i.ms / 1000).toFixed(1)} s`
+      + `  ·  one ${i.window_m} m window, ${i.masked_pct} % of it rebuilt`
+      + (i.guide > 0 ? `  ·  pulled to ${i.guided.join(', ') || 'nothing guidable'}` : '')
+      + (i.best_of > 1 ? `  ·  seed ${i.seed} kept of ${i.best_of}` : '')
+      + (i.in_range ? '' : '  ·  outside the scales it was trained on');
+    if (i.best_of > 1) { $('#dif-seed').value = i.seed; difCandidates(i); }
+    $('#latency').textContent = `rebuilt ${i.selection_ha ?? '?'} ha inside a ${i.window_m} m window in ${(i.ms / 1000).toFixed(1)} s, ${i.steps} steps`;
+  } catch (e) {
+    $('#dif-stat').textContent = e.message; $('#dif-stat').className = 'err';
+  } finally {
+    difBusy = false; $('#dif-fill').disabled = false; pollProgress(false);
+  }
+}
+$('#dif-fill').onclick = difFill;
+
+// ---- the place: geocode, then pull the OSM around it and encode it like the training data
+function pollProgress(on) {
+  clearInterval(osmPoll); osmPoll = null;
+  const bar = $('#osm-bar i');
+  if (!on) { bar.style.width = '0'; return; }
+  osmPoll = setInterval(async () => {
+    try {
+      const p = await api('/api/dif/progress');
+      if (!p.what) return;
+      const f = p.total ? p.done / p.total : 0;
+      bar.style.width = (100 * f).toFixed(0) + '%';
+      const el = osmBusy ? $('#osm-status') : $('#dif-stat');
+      el.textContent = p.total ? `${p.what}  ${p.done}/${p.total}` : p.what;
+    } catch (e) { /* the request itself will report */ }
+  }, 700);
+}
+// ---------------------------------------------------------------- the place
+// One box. Type, pick from the list or press Enter, and the working context loads. There is
+// no separate Find and no Load: a place you have chosen is a place you want to see.
+let sugHits = [], sugI = -1, sugTimer = null, sugSeq = 0;
+const LL = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/;
+function hideSug() { sugHits = []; sugI = -1; $('#osm-sug').hidden = true; }
+function drawSug() {
+  const box = $('#osm-sug');
+  if (!sugHits.length) { box.hidden = true; return; }
+  box.innerHTML = sugHits.map((h, i) => {
+    const parts = h.name.split(',');
+    return `<div class="${i === sugI ? 'on' : ''}" data-i="${i}"><b>${parts[0]}</b>${parts.slice(1).join(',')}</div>`;
+  }).join('');
+  box.hidden = false;
+}
+$('#osm-sug').onclick = (e) => {
+  const d = e.target.closest('div[data-i]'); if (!d) return;
+  const h = sugHits[+d.dataset.i]; hideSug(); if (h) loadPlace(h);
+};
+async function suggest(q) {
+  const seq = ++sugSeq;
+  try {
+    const hits = (await api('/api/osm/geocode?q=' + encodeURIComponent(q))).hits || [];
+    if (seq !== sugSeq) return;                    // a later keystroke already won
+    sugHits = hits.slice(0, 6); sugI = hits.length ? 0 : -1; drawSug();
+    if (!hits.length) { $('#osm-status').textContent = 'nothing found'; $('#osm-status').className = ''; }
+  } catch (e) { if (seq === sugSeq) { $('#osm-status').textContent = e.message; $('#osm-status').className = 'err'; } }
+}
+$('#osm-q').addEventListener('input', () => {
+  const q = $('#osm-q').value.trim();
+  clearTimeout(sugTimer);
+  if (q.length < 3 || LL.test(q)) { hideSug(); return; }
+  sugTimer = setTimeout(() => suggest(q), 350);
+});
+$('#osm-q').addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    if (!sugHits.length) return;
+    e.preventDefault(); sugI = (sugI + (e.key === 'ArrowDown' ? 1 : sugHits.length - 1)) % sugHits.length; drawSug();
+    return;
+  }
+  if (e.key === 'Escape') { hideSug(); return; }
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  clearTimeout(sugTimer);
+  const q = $('#osm-q').value.trim(); if (!q) return;
+  const ll = q.match(LL);
+  if (ll) { hideSug(); return loadPlace({ lat: +ll[1], lon: +ll[2], name: `${ll[1]}, ${ll[2]}` }); }
+  if (sugHits.length) { const h = sugHits[Math.max(sugI, 0)]; hideSug(); return loadPlace(h); }
+  // Enter before the suggestions arrived: look it up and take the first hit
+  $('#osm-status').textContent = 'searching...'; $('#osm-status').className = '';
+  api('/api/osm/geocode?q=' + encodeURIComponent(q))
+    .then((r) => { hideSug(); const h = (r.hits || [])[0];
+      if (h) loadPlace(h); else { $('#osm-status').textContent = 'nothing found'; } })
+    .catch((e) => { $('#osm-status').textContent = e.message; $('#osm-status').className = 'err'; });
+});
+document.addEventListener('click', (e) => { if (!e.target.closest('.qbox')) hideSug(); });
+
+async function loadPlace(h) {
+  if (!h || osmBusy) return;
+  osmBusy = true; $('#osm-q').disabled = true;
+  $('#osm-q').value = h.name.split(',').slice(0, 2).join(',').trim();
+  $('#osm-status').className = '';
+  $('#osm-status').textContent = `reading OpenStreetMap around ${(+h.lat).toFixed(4)}, ${(+h.lon).toFixed(4)}...`;
+  pollProgress(true);
+  try {
+    const res = await api('/api/osm/fetch', {
+      lat: +h.lat, lon: +h.lon, extent_m: parseInt($('#osm-context').value) || 1500 });
+    inpUndo = null; $('#msk-undo').disabled = true;
+    if (inpMask) { inpMask.fill(0); maskReset(null); }
+    VEC = res.vector || null; genRect = null; genMask = null;
+    osmPlace = { lat: +h.lat, lon: +h.lon, extent_m: res.tile_m || null };   // the design space export anchors on it
+    // a kilometre and a half of city is a quarter of a million cells: the voxel view is for
+    // one 128 px tile, never for the working context
+    if (geoMode === 'voxel') setGeoMode(VEC ? 'regular' : 'clean');
+    drawTile(res); drawMetrics(res.metrics, res);
+    difAsIs(res.dif_metrics);
+    selBox.visible = false;
+    $('#msk-stat').textContent = ''; $('#msk-win').textContent = ''; $('#msk-win').className = '';
+    const o = res.osm;
+    const q = o.parts || {};
+    const hg = o.heights;
+    const win = o.window_m ? `  ·  the model reads one ${o.window_m[0]} to ${o.window_m[1]} m window inside this` : '';
+    $('#osm-status').textContent = `${o.extent_m} m of city, ${o.px} px at ${o.res_m_per_px.toFixed(2)} m${win}`
+      + `\n${q.buildings ?? o.buildings} buildings, ${q.blocks ?? 0} blocks, ${q.greens ?? o.greens} green areas  ·  ${o.seconds} s`
+      + (hg && hg.total ? `\n${hg.tagged} of ${hg.total} buildings had a real height in OSM; `
+        + `the other ${hg.total - hg.tagged} are the ${hg.default_m} m default`
+        + (hg.tagged / hg.total < 0.5 ? ', so the skyline here is mostly that default rather than the real one' : '') : '');
+    $('#osm-status').style.whiteSpace = 'pre-line';
+    $('#model-status').className = 'status';
+    if (!selOn) selectMode(true);
+  } catch (e) {
+    $('#osm-status').textContent = e.message; $('#osm-status').className = 'err';
+  } finally {
+    osmBusy = false; $('#osm-q').disabled = false; pollProgress(false);
+  }
+}
+
+// ---------------------------------------------------------------- what the selection is
+// The sliders rest at what the selected plot measures, not at what the whole context does,
+// so this runs whenever the selection changes. It also reports the window the app would
+// crop for it, and says plainly when the selection is too big for any window the model has.
+let measSeq = 0, measTimer = null;
+function selectionChanged(delay = 120) { clearTimeout(measTimer); measTimer = setTimeout(measureSelection, delay); }
+async function measureSelection() {
+  if (!lastRes || !inpMask || !dif?.loaded) return;
+  const r = maskRect();
+  if (!r) { $('#msk-win').textContent = ''; $('#msk-win').className = ''; return; }
+  const seq = ++measSeq;
+  try {
+    const res = await api('/api/dif/measure', {
+      H: last.H, W: last.W, tile_m: TILE, canvas_id: canvasId,
+      channels_b64: canvasId ? undefined : lastRes.channels_b64, mask_b64: b64FromBytes(inpMask) });
+    if (seq !== measSeq) return;
+    difAsIs(res.metrics);
+    const sel = res.selection, w = res.window;
+    // the button stays live: the server refuses with this same sentence, so a stale
+    // measurement can never lock you out of a selection that is actually fine
+    if (res.window_error) {
+      $('#msk-win').textContent = res.window_error; $('#msk-win').className = 'err';
+    } else if (w) {
+      const off = w.clamped_m > 0;
+      $('#msk-win').textContent = `${sel.ha} ha selected  ·  the model reads a ${w.m} m window around it`
+        + (w.scale !== 1 ? `, ${w.px} px scaled to ${Math.round(w.px / w.scale)}` : '')
+        + (off ? `\nThe window ran into the edge of what you loaded and had to shift ${w.clamped_m} m, so the context is lopsided. Move the selection in, or load a larger area.` : '');
+      $('#msk-win').className = off ? 'warn' : '';
+    }
+  } catch (e) {
+    if (seq !== measSeq) return;
+    $('#msk-win').textContent = e.message; $('#msk-win').className = 'err';
+  }
+}
+
+const OUTFMT = {
+  '#dif-cfg': (v) => (+v).toFixed(1),
+  '#osm-context': (v) => v + ' m',
+  '#dif-guide': (v) => (+v > 0 ? (+v).toFixed(2) : 'off'),
+  '#dif-bestof': (v) => +v === 1 ? 'off' : '\u00d7' + v,
+};
+for (const id of ['#dif-steps', '#dif-cfg', '#dif-resample', '#dif-guide', '#dif-bestof', '#osm-context']) {
+  const e = $(id);
+  e.addEventListener('input', () => {
+    const o = document.querySelector(`output[for=${id.slice(1)}]`);
+    if (o) o.textContent = (OUTFMT[id] || ((v) => v))(e.value);
+  });
+}
+
+// ---------------------------------------------------------------- panel tabs
+function setTab(name) {
+  $('#pane-gan').hidden = name !== 'gan';
+  $('#pane-dif').hidden = name !== 'dif';
+  $('#tab-gan').classList.toggle('on', name === 'gan');
+  $('#tab-dif').classList.toggle('on', name === 'dif');
+  selectMode(name === 'dif');            // the diffusion tab is about choosing an area, so the tool comes on with it
+  try { localStorage.setItem('tab', name); } catch (e) {}
+}
+$('#tab-gan').onclick = () => setTab('gan');
+$('#tab-dif').onclick = () => setTab('dif');
+
+// ---------------------------------------------------------------- the area to rebuild
+// Dragging on the ground in the 3D view is the main way to choose it: the rectangle is
+// written straight into the mask, so the small canvas in the panel stays in sync and the
+// brush is still there for anything that is not a rectangle.
+let selOn = false, selDrag = null;
+// The area is either one dragged rectangle or any number of drawn shapes. A shape is a ring of
+// ground points in world metres. Rings are scan-filled into the same mask the rectangle writes,
+// so the fill, the measurement and the export are unchanged by which tool made the selection.
+let selShape = false, selRings = [], selPts = [], selHover = null;
+const selPoly = new THREE.Group(); selPoly.visible = false; scene.add(selPoly);
+const SEL_LINE = new THREE.LineBasicMaterial({ color: 0x35a0ff });
+const SEL_LIVE = new THREE.LineBasicMaterial({ color: 0x35a0ff, transparent: true, opacity: 0.65 });
+const SEL_FILL = new THREE.MeshBasicMaterial({ color: 0x35a0ff, transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide });
+const SEL_DOT = new THREE.MeshBasicMaterial({ color: 0xffffff });
+const SEL_DOT0 = new THREE.MeshBasicMaterial({ color: 0xffd54a });   // the corner that closes the ring
+const selBox = new THREE.Group(); selBox.visible = false; scene.add(selBox);
+const selFill = new THREE.Mesh(new THREE.PlaneGeometry(1, 1),
+  new THREE.MeshBasicMaterial({ color: 0x35a0ff, transparent: true, opacity: 0.18, depthWrite: false }));
+selFill.rotation.x = -Math.PI / 2;
+const selLine = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(1, 1)),
+  new THREE.LineBasicMaterial({ color: 0x35a0ff }));
+selLine.rotation.x = -Math.PI / 2;
+selBox.add(selFill, selLine);
+// The bounding box of the mask, in world metres. The context canvas is a quarter of a
+// million cells and this runs on every pointer move, so the box is kept as it is painted
+// and only rebuilt by a full scan when something has erased part of it.
+let maskBox = null, maskBoxStale = true;
+function maskTouch(x, y) {
+  if (!maskBox) maskBox = { x0: x, y0: y, x1: x, y1: y };
+  else { if (x < maskBox.x0) maskBox.x0 = x; if (x > maskBox.x1) maskBox.x1 = x;
+         if (y < maskBox.y0) maskBox.y0 = y; if (y > maskBox.y1) maskBox.y1 = y; }
+}
+function maskReset(box) { maskBox = box || null; maskBoxStale = false; }
+function maskBoxPx() {
+  if (!maskBoxStale) return maskBox;
+  const W = last.W, H = last.H;
+  let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+  for (let y = 0; y < H; y++) { const r = y * W;
+    for (let x = 0; x < W; x++) if (inpMask[r + x]) {
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+    } }
+  maskBox = x1 < x0 ? null : { x0, y0, x1, y1 };
+  maskBoxStale = false;
+  return maskBox;
+}
+function maskRect() {
+  if (!inpMask || !last) return null;
+  const b = maskBoxPx(); if (!b) return null;
+  const cell = TILE / last.W;
+  return { x0: b.x0 * cell - TILE / 2, z0: b.y0 * cell - TILE / 2,
+           x1: (b.x1 + 1) * cell - TILE / 2, z1: (b.y1 + 1) * cell - TILE / 2 };
+}
+function showSelBox() {
+  const r = maskRect();
+  selBox.visible = !!r && !(selShape && selRings.length);   // the shapes draw their own outlines
+  if (selPoly) drawSelPoly();
+  if (!r) return;
+  const w = Math.max(r.x1 - r.x0, 0.5), d = Math.max(r.z1 - r.z0, 0.5);
+  const y = parseFloat($('#geo-plate').value || 0.5) * 1.3 + 0.6;    // clear of the pavement plates
+  for (const m of [selFill, selLine]) { m.scale.set(w, d, 1); m.position.set((r.x0 + r.x1) / 2, y, (r.z0 + r.z1) / 2); }
+}
+// the height the selection graphics sit at, clear of the pavement plates
+function selY() { return parseFloat($('#geo-plate').value || 0.5) * 1.3 + 0.6; }
+function selClearGroup() {
+  for (const c of selPoly.children.slice()) { selPoly.remove(c); if (c.geometry) c.geometry.dispose(); }
+}
+// a ground shape is built in XY as (x, -z) and laid down with rotateX(-90), the same convention
+// the rest of the scene uses. Rotating the other way mirrors it about the north-south axis.
+function selRingObjs(pts, y, live) {
+  const out = [];
+  const loop = live ? pts : pts.concat([pts[0]]);
+  out.push(new THREE.Line(new THREE.BufferGeometry().setFromPoints(loop.map(([x, z]) => new THREE.Vector3(x, y, z))),
+                          live ? SEL_LIVE : SEL_LINE));
+  if (pts.length > 2 && !live) {
+    const sh = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)));
+    const g = new THREE.ShapeGeometry(sh); g.rotateX(-Math.PI / 2); g.translate(0, y - 0.02, 0);
+    out.push(new THREE.Mesh(g, SEL_FILL));
+  }
+  return out;
+}
+function selDots(pts, y) {
+  const r = TILE * 0.006, out = [];
+  pts.forEach(([x, z], i) => {
+    const g = new THREE.CircleGeometry(i === 0 ? r * 1.8 : r, 12); g.rotateX(-Math.PI / 2);
+    const m = new THREE.Mesh(g, i === 0 ? SEL_DOT0 : SEL_DOT); m.position.set(x, y + 0.03, z); out.push(m);
+  });
+  return out;
+}
+function drawSelPoly() {
+  selClearGroup();
+  const y = selY();
+  for (const r of selRings) for (const o of selRingObjs(r, y, false)) selPoly.add(o);
+  if (selPts.length) {
+    const live = selHover ? selPts.concat([selHover]) : selPts;
+    if (live.length > 1) for (const o of selRingObjs(live, y, true)) selPoly.add(o);
+    for (const o of selDots(selPts, y)) selPoly.add(o);
+  }
+  selPoly.visible = !!selPoly.children.length;
+}
+// is this pointer event on top of the first corner? measured on screen, so it is the same size
+// target however far away the camera is
+function selOnFirst(e) {
+  if (selPts.length < 3) return false;
+  const b = renderer.domElement.getBoundingClientRect();
+  const v = new THREE.Vector3(selPts[0][0], selY(), selPts[0][1]).project(camera);
+  const sx = b.left + (v.x + 1) / 2 * b.width, sy = b.top + (1 - v.y) / 2 * b.height;
+  return Math.hypot(e.clientX - sx, e.clientY - sy) <= 14;
+}
+// even-odd scanline, one ring at a time, unioned into the mask the rest of the app already reads
+function fillRingMask(pts, box) {
+  const W = last.W, H = last.H, cell = TILE / W;
+  const P = pts.map(([x, z]) => [(x + TILE / 2) / cell, (z + TILE / 2) / cell]);
+  let ty0 = 1e9, ty1 = -1;
+  for (const q of P) { ty0 = Math.min(ty0, q[1]); ty1 = Math.max(ty1, q[1]); }
+  const y0 = Math.max(0, Math.floor(ty0)), y1 = Math.min(H - 1, Math.ceil(ty1));
+  const xs = [];
+  for (let y = y0; y <= y1; y++) {
+    const cy = y + 0.5; xs.length = 0;
+    for (let i = 0, m = P.length; i < m; i++) {
+      const a = P[i], b = P[(i + 1) % m];
+      if ((a[1] <= cy) === (b[1] <= cy)) continue;
+      xs.push(a[0] + (cy - a[1]) / (b[1] - a[1]) * (b[0] - a[0]));
+    }
+    xs.sort((u, v) => u - v);
+    for (let k = 0; k + 1 < xs.length; k += 2) {
+      const sx = Math.max(0, Math.round(xs[k])), ex = Math.min(W - 1, Math.round(xs[k + 1]) - 1);
+      if (ex < sx) continue;
+      inpMask.fill(1, y * W + sx, y * W + ex + 1);
+      if (sx < box.x0) box.x0 = sx; if (ex > box.x1) box.x1 = ex;
+      if (y < box.y0) box.y0 = y; if (y > box.y1) box.y1 = y;
+    }
+  }
+}
+function writeRingsMask() {
+  if (!inpMask || !last) return false;
+  const W = last.W;
+  if (maskBox) for (let y = maskBox.y0; y <= maskBox.y1; y++) inpMask.fill(0, y * W + maskBox.x0, y * W + maskBox.x1 + 1);
+  const box = { x0: 1e9, y0: 1e9, x1: -1, y1: -1 };
+  for (const r of selRings) if (r.length > 2) fillRingMask(r, box);
+  const any = box.x1 >= box.x0;
+  maskReset(any ? box : null);
+  drawInpaint(); showSelBox();
+  return any;
+}
+function selStat() {
+  if (!selRings.length) { $('#msk-stat').textContent = ''; return; }
+  const a = selRings.reduce((s2, r) => s2 + Math.abs(ringArea(r)), 0);
+  $('#msk-stat').textContent = `${Math.round(a).toLocaleString()} m\u00b2 selected in ${selRings.length} shape${selRings.length === 1 ? '' : 's'}`;
+}
+// close the ring being drawn and start a fresh one, so shapes can be drawn one after another
+function selClosePoly() {
+  if (selPts.length < 3) return;
+  selRings.push(selPts); selPts = []; selHover = null;
+  if (writeRingsMask()) {
+    // a shape is only worth drawing if the board respects it, so turn the drawn-shape seam on
+    if ($('#dif-shape') && !$('#dif-shape').checked) { $('#dif-shape').checked = true;
+      try { localStorage.setItem('geo.dif-shape', '1'); } catch (e) {} }
+    selStat(); selectionChanged();
+  }
+  drawSelPoly();
+}
+function selCancelPoly() { selPts = []; selHover = null; drawSelPoly(); selStat(); }
+function selClearRings() { selRings = []; selPts = []; selHover = null; drawSelPoly(); }
+function selSetShape(on) {
+  selShape = !!on;
+  selPts = []; selHover = null;
+  if (!selShape) selClearRings(); else drawSelPoly();
+  $('#sel-poly').classList.toggle('on', selShape);
+  $('#sel-rect').classList.toggle('on', !selShape);
+  $('#sel-hint').textContent = selShape
+    ? 'Click the corners on the ground. Close on the yellow corner, or double click, or Enter. Then draw the next shape. Backspace undoes a corner, Escape drops the one in progress.'
+    : 'Drag a rectangle on the ground in the 3D view.';
+  if (selShape && !selOn) selectMode(true);
+}
+$('#sel-rect').onclick = () => selSetShape(false);
+$('#sel-poly').onclick = () => selSetShape(true);
+function selectMode(on) {
+  selOn = !!on;
+  $('#sel-3d').classList.toggle('on', selOn);
+  controls.enabled = !selOn;
+  renderer.domElement.style.cursor = selOn ? 'crosshair' : '';
+}
+$('#sel-3d').onclick = () => selectMode(!selOn);
+$('#msk-clear').addEventListener('click', () => { selClearRings(); }, true);
+// screen -> the ground plane, in world metres
+const selRay = new THREE.Raycaster(), selPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), selHit = new THREE.Vector3();
+function groundAt(e) {
+  const b = renderer.domElement.getBoundingClientRect();
+  selRay.setFromCamera(new THREE.Vector2((e.clientX - b.left) / b.width * 2 - 1, -((e.clientY - b.top) / b.height) * 2 + 1), camera);
+  return selRay.ray.intersectPlane(selPlane, selHit) ? [selHit.x, selHit.z] : null;
+}
+function writeRectMask(a, b) {
+  if (!inpMask || !last) return;
+  const W = last.W, H = last.H, cell = TILE / W;
+  const px = (x) => Math.max(0, Math.min(W - 1, Math.floor((x + TILE / 2) / cell)));
+  const pz = (z) => Math.max(0, Math.min(H - 1, Math.floor((z + TILE / 2) / cell)));
+  const x0 = px(Math.min(a[0], b[0])), x1 = px(Math.max(a[0], b[0]));
+  const y0 = pz(Math.min(a[1], b[1])), y1 = pz(Math.max(a[1], b[1]));
+  if (maskBox) for (let y = maskBox.y0; y <= maskBox.y1; y++) inpMask.fill(0, y * W + maskBox.x0, y * W + maskBox.x1 + 1);
+  for (let y = y0; y <= y1; y++) inpMask.fill(1, y * W + x0, y * W + x1 + 1);
+  maskReset({ x0, y0, x1, y1 });
+  drawInpaint(); showSelBox();
+}
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  if (!selOn || !last || e.button !== 0) return;
+  if (selShape) {
+    // the second click of a double click closes rather than dropping another corner
+    if (e.detail >= 2) { if (selPts.length > 2) selClosePoly(); return; }
+    if (selOnFirst(e)) { selClosePoly(); return; }
+    const p = groundAt(e); if (!p) return;
+    selPts.push(p); selHover = null; drawSelPoly();
+    $('#msk-stat').textContent = selPts.length < 3
+      ? `${selPts.length} corner${selPts.length === 1 ? '' : 's'}`
+      : `${selPts.length} corners, click the yellow corner or double click to close`;
+    return;
+  }
+  const p = groundAt(e); if (!p) return;
+  renderer.domElement.setPointerCapture(e.pointerId);
+  selDrag = p; writeRectMask(p, p);
+  $('#msk-stat').textContent = '';
+});
+renderer.domElement.addEventListener('pointermove', (e) => {
+  if (selShape) { if (selOn && selPts.length) { selHover = groundAt(e); drawSelPoly(); } return; }
+  if (!selDrag) return;
+  const p = groundAt(e); if (p) writeRectMask(selDrag, p);
+});
+renderer.domElement.addEventListener('dblclick', (e) => { if (selOn && selShape) e.preventDefault(); });
+renderer.domElement.addEventListener('contextmenu', (e) => {
+  if (!selOn || !selShape) return;
+  e.preventDefault();                      // right click closes too, the way most drawing tools do
+  if (selPts.length > 2) selClosePoly();
+});
+window.addEventListener('keydown', (e) => {
+  if (!selOn || !selShape) return;
+  if (e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+  if (e.key === 'Enter') { e.preventDefault(); selClosePoly(); }
+  else if (e.key === 'Escape') { e.preventDefault(); selCancelPoly(); }
+  else if (e.key === 'Backspace') { e.preventDefault(); selPts.pop(); drawSelPoly();
+    if (!selPts.length) selStat(); else $('#msk-stat').textContent = `${selPts.length} corner${selPts.length === 1 ? '' : 's'}`; }
+});
+const selEnd = () => {
+  if (!selDrag) return;
+  selDrag = null;
+  const r = maskRect();
+  if (r) $('#msk-stat').textContent = `${Math.round(r.x1 - r.x0)} x ${Math.round(r.z1 - r.z0)} m selected`;
+  selectionChanged();
+};
+renderer.domElement.addEventListener('pointerup', selEnd);
+renderer.domElement.addEventListener('pointercancel', selEnd);
+
+// ---------------------------------------------------------------- api
+async function api(path, body) {
+  const r = await fetch(path, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {});
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+
+function params() {
+  const pca = [...document.querySelectorAll('#pca input[type=range]')].map((e) => parseFloat(e.value));
+  const dirs = {};
+  for (const e of document.querySelectorAll('#dirs input[type=range]')) dirs[e.dataset.name] = parseFloat(e.value);
+  return {
+    seed_a: parseInt($('#seed_a').value) || 0, seed_b: parseInt($('#seed_b').value) || 0,
+    mix: parseFloat($('#mix').value), psi: parseFloat($('#psi').value),
+    city_a: parseInt($('#city_a').value) || 0, city_b: parseInt($('#city_b').value) || 0,
+    city_mix: parseFloat($('#city_mix').value), pca, dirs, targets: currentTargets(),
+  };
+}
+
+async function generate() {
+  if (!state?.loaded) return;
+  if (inflight) { dirty = true; return; }
+  inflight = true;
+  try {
+    const res = await api('/api/generate', params());
+    VEC = null; genRect = null; genMask = null;
+    drawTile(res); drawMetrics(res.metrics, res);
+    $('#model-status').className = 'status';
+  } catch (e) {
+    $('#model-status').textContent = e.message; $('#model-status').className = 'status err';
+  } finally {
+    inflight = false;
+    if (dirty) { dirty = false; generate(); }
+  }
+}
+function schedule() { clearTimeout(timer); timer = setTimeout(generate, 60); }
+
+// ---------------------------------------------------------------- ui build
+function slider(container, label, id, name, min, max, step, val) {
+  const row = document.createElement('div'); row.className = 'row';
+  row.innerHTML = `<label title="${label}">${label}</label><input type="range" min="${min}" max="${max}" step="${step}" value="${val}"><output>${(+val).toFixed(2)}</output>`;
+  const inp = row.querySelector('input'); if (id) inp.id = id; if (name) inp.dataset.name = name;
+  inp.addEventListener('input', () => { row.querySelector('output').textContent = (+inp.value).toFixed(2); schedule(); });
+  container.appendChild(row);
+}
+
+function applyState(s) {
+  state = s;
+  TILE = s.tile_m || 400;
+  const ms = $('#model-status');
+  $('#mask-sec').hidden = false;
+  $('#dif-sec').hidden = !s.dif;
+  if (s.context_m) { const c = $('#osm-context'); c.value = s.context_m; c.dispatchEvent(new Event('input')); }
+  if (s.dif) api('/api/dif/state').then(difState).catch(() => {});
+  if (!s.loaded) {
+    ms.textContent = 'No model loaded. Pick a snapshot and press Load.';
+    $('#empty').innerHTML = s.dif
+      ? '<div><b>Nothing loaded yet</b><br>Find a place on the right and load it from OpenStreetMap.<br>The GAN lab tab needs a snapshot loaded there first.</div>'
+      : '<div><b>No model loaded</b><br>Pick a snapshot in the panel on the right and press Load.</div>';
+    $('#empty').hidden = false;
+    return;
+  }
+  $('#empty').hidden = true;
+  ms.textContent = `${s.pkl}  (${s.res}px, ${s.channels} ch, ${s.c_dim} cities, ${s.device})`;
+
+  for (const id of ['#city_a', '#city_b']) {
+    const sel = $(id); sel.innerHTML = '';
+    const n = Math.max(s.c_dim, 1);
+    for (let i = 0; i < n; i++) { const o = document.createElement('option'); o.value = i; o.textContent = s.cities[i] ?? `class ${i}`; sel.appendChild(o); }
+  }
+  $('#city_b').value = Math.min(1, Math.max(s.c_dim - 1, 0));
+
+  $('#inp-sec').hidden = false;
+  if (s.inpaint_steps) { $('#inp-steps').value = s.inpaint_steps; $('#inp-steps').dispatchEvent(new Event('input')); }
+
+  // real reference tiles, when the server was started with --images
+  const rt = s.real_tiles;
+  $('#real-sec').hidden = !rt;
+  if (rt) {
+    const rc = $('#real_city'); const cur = rc.value; rc.innerHTML = '';
+    for (const c of Object.keys(rt)) { const o = document.createElement('option'); o.value = c; o.textContent = c; rc.appendChild(o); }
+    if (cur && rt[cur]) rc.value = cur; else if (rt.Barcelona) rc.value = 'Barcelona';
+    fillRealIdx();
+  }
+
+  const pca = $('#pca'); pca.innerHTML = '';
+  s.pca.std.forEach((sd, i) => slider(pca, `PC ${i + 1}  (sd ${sd.toFixed(2)})`, null, null, -3, 3, 0.05, 0));
+
+  const dirs = $('#dirs'); dirs.innerHTML = '';
+  s.directions.names.forEach((n, i) => {
+    slider(dirs, label(n), null, n, -3, 3, 0.05, 0);
+    const r2 = s.directions.r2?.[i];
+    if (r2 !== undefined) {
+      const lab = dirs.lastElementChild.querySelector('label');
+      const dot = document.createElement('span');
+      dot.className = 'r2 ' + (r2 >= 0.5 ? 'good' : r2 >= 0.3 ? 'ok' : 'bad');
+      lab.prepend(dot);
+      lab.title = `${n}: R\u00b2 ${r2.toFixed(2)} of the linear fit. Green above 0.5 is reliably controllable, amber is weak, red is mostly noise.`;
+    }
+  });
+  $('#dirs-hint').style.display = s.directions.names.length ? 'none' : '';
+  $('#dirs-legend').hidden = !s.directions.names.length;
+
+  const tg = $('#targets'); tg.innerHTML = '';
+  if (s.directions.targets) {
+    s.directions.names.forEach((n, i) => {
+      const info = s.metric_info?.[n] || { label: n, unit: '', decimals: 2 };
+      const mean = s.directions.mean?.[i], sd = s.directions.std?.[i];
+      const row = document.createElement('div'); row.className = 'trow'; row.dataset.name = n;
+      const ph = mean !== undefined ? `${mean.toFixed(info.decimals)} \u00b1 ${sd.toFixed(info.decimals)}` : '';
+      row.innerHTML = `<label title="${n}">${info.label}${info.unit ? ' (' + info.unit + ')' : ''}</label>
+        <input type="number" step="any" placeholder="${ph}" data-name="${n}"><span class="got"></span><button title="clear">\u00d7</button>`;
+      row.querySelector('input').addEventListener('input', schedule);
+      row.querySelector('button').onclick = () => { row.querySelector('input').value = ''; schedule(); };
+      tg.appendChild(row);
+    });
+    $('#targets-hint').style.display = '';
+  } else {
+    $('#targets-hint').textContent = s.directions.names.length
+      ? 'This directions.npz has no Jacobian. Re-run fit_directions.py to enable absolute targets.'
+      : 'Available once the server is started with a directions.npz from fit_directions.py.';
+  }
+  generate();
+}
+
+async function refreshSnapshots() {
+  const { snapshots } = await api('/api/snapshots');
+  const sel = $('#snap'); const cur = sel.value; sel.innerHTML = '';
+  for (const p of snapshots) { const o = document.createElement('option'); o.value = p; o.textContent = p; sel.appendChild(o); }
+  if (snapshots.includes(cur)) sel.value = cur; else if (state?.pkl && snapshots.includes(state.pkl)) sel.value = state.pkl; else sel.selectedIndex = snapshots.length - 1;
+  if (!snapshots.length) { const o = document.createElement('option'); o.textContent = 'no snapshots found under runs/'; sel.appendChild(o); }
+}
+
+function fillRealIdx() {
+  const rt = state?.real_tiles; if (!rt) return;
+  const ids = rt[$('#real_city').value] || [];
+  const ri = $('#real_idx'); const cur = ri.value; ri.innerHTML = '';
+  for (const i of ids) { const o = document.createElement('option'); o.value = i; o.textContent = `tile ${i}`; ri.appendChild(o); }
+  if (ids.includes(+cur)) ri.value = cur; else if (ids.length) ri.selectedIndex = ids.length >> 1;
+}
+let realSeq = 0;
+async function showReal() {
+  const city = $('#real_city').value, idx = $('#real_idx').value;
+  if (!city || idx === '') return;
+  const seq = ++realSeq;
+  try {
+    const res = await api(`/api/real?city=${encodeURIComponent(city)}&idx=${idx}`);
+    if (seq !== realSeq) return;   // a newer request is on its way
+    VEC = null; genRect = null; genMask = null;
+    drawTile(res); drawMetrics(res.metrics, res);
+    $('#model-status').className = 'status';
+  } catch (e) { $('#model-status').textContent = e.message; $('#model-status').className = 'status err'; }
+}
+$('#real_city').addEventListener('change', () => { fillRealIdx(); showReal(); });
+$('#real_idx').addEventListener('change', showReal);
+$('#btn-real').onclick = showReal;
+$('#btn-real-rnd').onclick = () => { const ri = $('#real_idx'); if (ri.options.length) { ri.selectedIndex = Math.floor(Math.random() * ri.options.length); showReal(); } };
+
+$('#btn-refresh').onclick = refreshSnapshots;
+$('#btn-load').onclick = async () => {
+  const path = $('#snap').value; if (!path) return;
+  $('#model-status').textContent = `loading ${path} and computing PCA...`; $('#model-status').className = 'status';
+  $('#empty').innerHTML = `<div><b>Loading</b><br>${path}<br>computing PCA sliders, 10 to 20 seconds on CPU</div>`; $('#empty').hidden = false;
+  try { applyState(await api('/api/load', { path })); }
+  catch (e) { $('#model-status').textContent = e.message; $('#model-status').className = 'status err'; }
+};
+for (const id of ['#mix', '#psi', '#city_mix']) {
+  const e = $(id); e.addEventListener('input', () => { document.querySelector(`output[for=${id.slice(1)}]`).textContent = (+e.value).toFixed(2); schedule(); });
+}
+for (const id of ['#seed_a', '#seed_b', '#city_a', '#city_b']) $(id).addEventListener('change', schedule);
+for (const b of document.querySelectorAll('button[data-rand]')) b.onclick = () => { $('#' + b.dataset.rand).value = Math.floor(Math.random() * 1e6); schedule(); };
+for (const id of ['#hscale', '#gap']) {
+  const e = $(id); e.addEventListener('input', () => { document.querySelector(`output[for=${id.slice(1)}]`).textContent = (+e.value).toFixed(2); rebuildBuildings(); });
+}
+$('#btn-reset').onclick = () => {
+  for (const e of document.querySelectorAll('#pca input, #dirs input, #mix, #city_mix')) { e.value = 0; e.dispatchEvent(new Event('input')); }
+  for (const e of document.querySelectorAll('#targets input')) e.value = '';
+  $('#psi').value = 1; $('#psi').dispatchEvent(new Event('input'));
+};
+function setTheme(name) {
+  THEME = THEMES[name] ? name : 'dark';
+  const T = THEMES[THEME];
+  document.body.dataset.theme = THEME;
+  $('#btn-theme').textContent = T.label;
+  scene.background = new THREE.Color(T.bg);
+  frame.material.color.set(T.frame);
+  const bs = $('#geo-board');
+  if (bs.value !== T.board) { bs.value = T.board; applyBoard(T.board); try { localStorage.setItem('geo.geo-board', T.board); } catch (e) {} }
+  else applyBoard(T.board);
+  if (last && lastRes) { drawTile(lastRes); drawMetrics(lastRes.metrics, lastRes); }   // the tile ground is baked into the canvas
+  renderer.shadowMap.needsUpdate = true;
+  try { localStorage.setItem('theme', THEME); } catch (e) {}
+}
+$('#btn-theme').onclick = () => setTheme(THEME === 'dark' ? 'light' : 'dark');
+$('#btn-cam').onclick = resetCamera;
+$('#btn-geo').onclick = () => { $('#geo-pop').hidden = !$('#geo-pop').hidden; };
+$('#geo-voxel').onclick = () => setGeoMode('voxel');
+$('#geo-clean').onclick = () => setGeoMode('clean');
+$('#geo-regular').onclick = () => setGeoMode('regular');
+$('#geo-vector').onclick = () => setGeoMode('vector');
+// readouts for the geometry sliders; min edge and min rect are shown in metres of the current tile
+const GEO_FMT = {
+  'geo-tol': (v) => (+v).toFixed(2), 'geo-min': (v) => v, 'geo-plate': (v) => (+v).toFixed(1), 'geo-trees': (v) => (+v).toFixed(2),
+  'rg-up': (v) => v + 'x', 'rg-open': (v) => (+v).toFixed(2), 'rg-close': (v) => (+v).toFixed(2), 'rg-fill': (v) => (+v).toFixed(2),
+  'rg-edge': (v) => last ? `${(+v * TILE / last.W).toFixed(0)} m` : `${v} px`,
+  'rg-rect': (v) => last ? `${(+v * (TILE / last.W) ** 2).toFixed(0)} m\u00b2` : `${v} px\u00b2`,
+  'rg-hstep': (v) => +v > 0 ? `${v} m` : 'off',
+  'vc-minb': (v) => `${v} m\u00b2`, 'vc-hstep': (v) => +v > 0 ? `${v} m` : 'off', 'vc-sep': (v) => `${(+v).toFixed(1)} m`,
+  'vc-snap': (v) => +v > 0 ? `${v}\u00b0` : 'off', 'vc-spur': (v) => `${v} m`, 'vc-seps': (v) => `${(+v).toFixed(1)} px`,
+};
+function geoReadouts() { for (const id in GEO_FMT) { const e = $('#' + id), o = document.querySelector(`output[for=${id}]`); if (e && o) o.textContent = GEO_FMT[id](e.value); } }
+const GEO_INPUTS = ['geo-tol', 'geo-min', 'geo-plate', 'geo-trees', 'geo-board', 'geo-detail', 'rg-axis', 'rg-src', 'rg-up', 'rg-open', 'rg-close', 'rg-bld', 'rg-edge', 'rg-fill', 'rg-rect', 'rg-hstep', 'rg-st', 'rg-blk', 'rg-gr',
+  'vc-axis', 'vc-minb', 'vc-necks', 'vc-hstep', 'vc-chamfer', 'vc-sep', 'vc-open', 'vc-snap', 'vc-spur', 'vc-seps', 'vc-lines'];
+let geoTimer = null;
+// the seam switch changes nothing on the server, it only decides how the board is cut
+$('#dif-shape').addEventListener('change', () => {
+  try { localStorage.setItem('geo.dif-shape', $('#dif-shape').checked ? '1' : ''); } catch (e) {}
+  if (geoMode !== 'voxel') buildClean();
+});
+try { $('#dif-shape').checked = !!localStorage.getItem('geo.dif-shape'); } catch (e) {}
+for (const id of GEO_INPUTS) {
+  const e = $('#' + id);
+  // the server fit takes a moment, so its sliders wait until the pointer is released
+  const vec = id.startsWith('vc-');
+  e.addEventListener(e.type === 'checkbox' ? 'change' : (vec && e.type === 'range' ? 'change' : 'input'), () => {
+    geoReadouts();
+    if (id === 'geo-board') applyBoard(e.value);
+    try { localStorage.setItem('geo.' + id, e.type === 'checkbox' ? (e.checked ? '1' : '') : e.value); } catch (err) {}
+    if (geoMode !== 'voxel') { clearTimeout(geoTimer); geoTimer = setTimeout(buildClean, 30); }
+  });
+  if (vec && e.type === 'range') e.addEventListener('input', geoReadouts);
+}
+// restore the geometry settings from the last visit
+try {
+  for (const id of GEO_INPUTS) {
+    const v = localStorage.getItem('geo.' + id); if (v === null) continue;
+    const e = $('#' + id); if (e.type === 'checkbox') e.checked = !!v; else e.value = v;
+  }
+  applyBoard($('#geo-board').value);
+  const gm = localStorage.getItem('geoMode'); if (gm && gm !== 'voxel') setGeoMode(gm);
+} catch (e) {}
+setTab((() => { try { return localStorage.getItem('tab') || 'dif'; } catch (e) { return 'dif'; } })());
+setTheme((() => { try { return localStorage.getItem('theme') || 'dark'; } catch (e) { return 'dark'; } })());
+geoReadouts();
+sunShadow();
+if (geoMode === 'voxel') cleanGroup.visible = treeGroup.visible = detailGroup.visible = false;
+
+// ---------------------------------------------------------------- design space export
+// Colibri in a popup: tick the sliders to sweep, give each one a range and a number of
+// steps, and the grid is every combination of them. The count is the product of the step
+// counts, so it is in front of you the whole time, next to what it will cost in minutes.
+//
+// The run happens on the server: generate, fit geometry, measure, write 001.3dm, 002.3dm
+// and the two CSVs. On the Diffusion tab an option is only what the model put inside the
+// painted area and the numbers describe that piece, with the city around it still casting
+// shadows; the surroundings go out once as context.3dm.
+
+let expAxes = [];
+let expPoll = null, expRunning = false;
+
+function expTab() { return $('#pane-dif').hidden ? 'gan' : 'dif'; }
+
+function expRowsFor(tab) {
+  const a = [];
+  const grp = (name) => a.push({ group: name });
+  const add = (key, label, from, to, steps, isInt, on, hint) =>
+    a.push({ key, label, from: +from, to: +to, steps, int: !!isInt, on: !!on, hint: hint || label });
+  const rng = (id) => { const e = $('#' + id); return [+e.min, +e.max]; };
+  if (tab === 'gan') {
+    const sa = parseInt($('#seed_a').value) || 0, sb = parseInt($('#seed_b').value) || 0;
+    grp('Latent');
+    add('seed_a', 'seed A', sa, sa + 5, 6, true, true, 'a different tile per seed: the widest source of variety this model has');
+    add('seed_b', 'seed B', sb, sb + 5, 6, true, false, 'only matters where A to B is above 0');
+    add('mix', 'A to B', 0, 1, 3, false, false, 'interpolate between the two seeds');
+    add('psi', 'truncation', ...rng('psi').slice(0, 2), 3, false, false, 'lower is closer to the average tile');
+    grp('City');
+    add('city_mix', 'blend A to B', 0, 1, 3, false, false, 'blend the two chosen cities');
+    const pcas = [...document.querySelectorAll('#pca input[type=range]')];
+    if (pcas.length) grp('Principal components');
+    pcas.forEach((e, i) => {
+      const lab = e.closest('.row')?.querySelector('label')?.textContent || ('pca ' + (i + 1));
+      add('pca' + (i + 1), lab, e.min, e.max, 3, false, false, 'one axis of variation in W');
+    });
+    const dirs = [...document.querySelectorAll('#dirs input[type=range]')];
+    if (dirs.length) grp('Metric directions');
+    for (const e of dirs) {
+      const lab = e.closest('.row')?.querySelector('label')?.textContent || e.dataset.name;
+      add('dir:' + e.dataset.name, lab.trim(), e.min, e.max, 3, false, false, 'the fitted direction for this metric, in standard deviations');
+    }
+    const tg = [...document.querySelectorAll('#targets .trow')].filter((r) => r.querySelector('input[type=number]')?.value !== '');
+    if (tg.length) grp('Targets');
+    for (const r of tg) {
+      const v = +r.querySelector('input[type=number]').value;
+      add('target:' + r.dataset.name, r.querySelector('label')?.textContent?.trim() || r.dataset.name,
+        +(v * 0.6).toFixed(3), +(v * 1.4).toFixed(3), 3, false, false,
+        'asked for, then solved and re-measured: what the model actually produced goes in objectives.csv');
+    }
+  } else {
+    const sd = parseInt($('#dif-seed').value) || 0;
+    grp('Model');
+    add('seed', 'seed', sd, sd + 7, 8, true, true, 'the same request with a different seed is a different fill: on this model it is the strongest handle there is');
+    add('cfg', 'guidance', ...rng('dif-cfg').slice(0, 2), 4, false, false, 'how hard the model is pushed toward the numbers asked for');
+    add('resample', 'harmonise', ...rng('dif-resample').slice(0, 2), 2, true, false, 'RePaint resampling: more passes, better seams, slower');
+    add('steps', 'steps', 20, 80, 2, true, false, 'denoising steps: costs time linearly');
+    if ($('#dif-guide')) add('guide', 'pull to target', ...rng('dif-guide'), 3, false, false,
+      'metric guidance: the fill is measured at every step and pushed toward the numbers asked for');
+    if ($('#dif-bestof')) add('best_of', 'best of', 1, 8, 2, true, false,
+      'sample this many seeds and keep the closest: every option costs that many fills');
+    // a target row is a request once it has been touched; untouched ("as is") rows are
+    // left to the model, and there is no point sweeping one of those
+    const on = [...document.querySelectorAll('#dif-targets .trow2')].filter((r) => !r.classList.contains('asis'));
+    if (on.length) grp('Targets');
+    for (const r of on) {
+      const e = r.querySelector('input[type=range]'), sc = +r.dataset.scale;
+      add('target:' + r.dataset.name, r.querySelector('label').textContent.trim(),
+        +(+e.min / sc).toFixed(4), +(+e.max / sc).toFixed(4), 3, false, false,
+        'tick fewer of these than you think: the fill follows its surroundings much more than the numbers');
+    }
+  }
+  return a;
+}
+
+// the values one axis comes to, the same rule the server uses
+function expValues(a) {
+  const n = Math.max(1, a.steps | 0);
+  let v = n === 1 ? [a.from] : Array.from({ length: n }, (_, i) => a.from + (a.to - a.from) * i / (n - 1));
+  if (a.int) v = [...new Set(v.map((x) => Math.round(x)))];
+  return v;
+}
+function expCount() {
+  return expAxes.filter((a) => a.on).reduce((n, a) => n * expValues(a).length, 1);
+}
+function expPerOption() {           // milliseconds, from what the models actually took here
+  if (expTab() === 'dif') {
+    const st = parseInt($('#dif-steps').value) || 40;
+    return (difLastMs || 9000) * st / (difLastSteps || 40) + 2200;
+  }
+  return (lastGenMs || 400) + 2000;
+}
+function expMins(n) {
+  const s = n * expPerOption() / 1000;
+  return s < 90 ? `${Math.round(s)} s` : s < 5400 ? `about ${Math.round(s / 60)} min` : `about ${(s / 3600).toFixed(1)} h`;
+}
+
+function expShowCount() {
+  const n = expCount(), el = $('#exp-count');
+  const axes = expAxes.filter((a) => a.on).length;
+  el.classList.toggle('over', n > 300);
+  el.innerHTML = `<b>${n}</b> option${n === 1 ? '' : 's'} <span style="color:var(--muted)">`
+    + `from ${axes} parameter${axes === 1 ? '' : 's'} &middot; ${expMins(n)}</span>`;
+  $('#exp-go').disabled = expRunning || n < 1 || n > 4000;
+}
+
+function expBuild() {
+  expAxes = expRowsFor(expTab());
+  const box = $('#exp-axes');
+  box.innerHTML = '<div class="head" style="grid-column:1/3">parameter</div>'
+    + '<div class="head">from</div><div class="head">to</div><div class="head">steps</div><div class="head">values</div>';
+  for (const a of expAxes) {
+    if (a.group) { const g = document.createElement('div'); g.className = 'grp'; g.textContent = a.group; box.appendChild(g); continue; }
+    const row = document.createElement('div');
+    row.className = 'arow' + (a.on ? '' : ' off');
+    const dec = a.int ? 0 : 2;
+    row.innerHTML = `<input type="checkbox" ${a.on ? 'checked' : ''}>
+      <label title="${a.hint}">${a.label}</label>
+      <input type="number" class="f" value="${a.from.toFixed(dec)}" step="${a.int ? 1 : 'any'}">
+      <input type="number" class="t" value="${a.to.toFixed(dec)}" step="${a.int ? 1 : 'any'}">
+      <input type="number" class="n" value="${a.steps}" min="1" max="64" step="1">
+      <span class="vals"></span>`;
+    const chk = row.querySelector('input[type=checkbox]');
+    const show = () => {
+      const v = expValues(a);
+      row.querySelector('.vals').textContent = v.slice(0, 5).map((x) => (a.int ? x : +x.toFixed(3))).join(', ')
+        + (v.length > 5 ? ` ... (${v.length})` : '');
+      expShowCount();
+    };
+    chk.addEventListener('change', () => { a.on = chk.checked; row.classList.toggle('off', !a.on); expShowCount(); });
+    for (const [cls, key] of [['.f', 'from'], ['.t', 'to'], ['.n', 'steps']]) {
+      row.querySelector(cls).addEventListener('input', (e) => {
+        a[key] = key === 'steps' ? Math.max(1, Math.min(64, parseInt(e.target.value) || 1)) : (parseFloat(e.target.value) || 0);
+        if (!a.on) { a.on = chk.checked = true; row.classList.remove('off'); }
+        show();
+      });
+    }
+    box.appendChild(row);
+    show();
+  }
+  expScope();
+  $('#exp-name').value = $('#exp-name').value
+    || ((expTab() === 'dif' && osmPlace ? `osm-${osmPlace.lat.toFixed(3)}-${osmPlace.lon.toFixed(3)}` : 'space')
+        + '-' + new Date().toISOString().slice(0, 16).replace(/[-:]/g, '').replace('T', '-'));
+  expShowCount();
+}
+
+// what an option covers and how far around it is measured, which is the easy thing to get wrong
+function expScope() {
+  const dif = expTab() === 'dif', r = maskRect();
+  $('#exp-ctx').hidden = !dif || !r;
+  if (!dif) {
+    $('#exp-scope').textContent = 'Each option is a whole generated tile. There is no context, so the only thing outside it is the tile boundary.';
+    return;
+  }
+  if (!r) { $('#exp-scope').textContent = 'Paint the area to rebuild first: drag on the ground in the 3D view.'; return; }
+  const w = Math.round(r.x1 - r.x0), d = Math.round(r.z1 - r.z0), c = +$('#exp-ctxm').value;
+  const src = VEC ? 'the real OpenStreetMap outlines, heights and blocks, not the model\u2019s raster'
+    : 'the fitted geometry of this tile, since no OpenStreetMap area is loaded';
+  $('#exp-scope').textContent = `Each option is what the model puts in the ${w} x ${d} m area you painted `
+    + `(${maskedPct().toFixed(1)} % of the board), and the numbers describe that piece only. `
+    + (c > 0
+      ? `The city within ${c} m of it still casts its shadows and blocks its views, and that ${Math.min(w + 2 * c, TILE)} m across goes out once as context.3dm, with a hole where the options go, in the same coordinates: ${src}.`
+      : 'At 0 nothing around it is taken into account: the plot is measured as if it stood alone, and context.3dm holds only the outline.');
+}
+$('#exp-ctxm').addEventListener('input', () => {
+  $('output[for=exp-ctxm]').textContent = $('#exp-ctxm').value + ' m';
+  expScope();
+});
+
+function expOpen() {
+  if (!lastRes) { $('#exp-stat').textContent = 'generate or load a tile first'; return; }
+  expBuild();
+  $('#exp-modal').hidden = false;
+  if (expRunning) expTick();
+}
+$('#exp-open').onclick = expOpen;
+$('#exp-close').onclick = () => { $('#exp-modal').hidden = true; };
+$('#exp-modal').addEventListener('pointerdown', (e) => { if (e.target.id === 'exp-modal') $('#exp-modal').hidden = true; });
+
+async function expGo() {
+  const tab = expTab();
+  if (tab === 'dif' && maskedPct() <= 0) { expSay('paint the area to rebuild first', true); return; }
+  const axes = expAxes.filter((a) => a.on).map((a) => ({ key: a.key, from: a.from, to: a.to, steps: a.steps, int: a.int }));
+  if (!axes.length) { expSay('tick at least one parameter', true); return; }
+  const spec = {
+    engine: tab, name: $('#exp-name').value.trim(), axes, tile_m: TILE,
+    thumbs: $('#exp-thumbs').checked, vectorize: vecOptions(), base: {},
+  };
+  if (osmPlace) spec.anchor = { lat: osmPlace.lat, lon: osmPlace.lon };
+  if (tab === 'dif') {
+    spec.context_m = +$('#exp-ctxm').value;
+    if (VEC) spec.vec = VEC;
+    spec.base = {
+      targets: difTargets(), steps: parseInt($('#dif-steps').value), cfg: parseFloat($('#dif-cfg').value),
+      resample: parseInt($('#dif-resample').value), seed: parseInt($('#dif-seed').value) || 0,
+      keep_streets: $('#dif-keepst')?.checked || false,
+      guide: parseFloat($('#dif-guide')?.value || 0), best_of: parseInt($('#dif-bestof')?.value) || 1,
+    };
+    spec.canvas = { H: last.H, W: last.W, tile_m: TILE, channels_b64: lastRes.channels_b64, mask_b64: b64FromBytes(inpMask) };
+  } else {
+    spec.base = params();
+  }
+  $('#exp-go').disabled = true;
+  try {
+    await api('/api/export/start', spec);
+    expRunning = true;
+    expSay('starting...');
+    expPollStart();
+  } catch (e) { expSay(e.message, true); $('#exp-go').disabled = false; }
+}
+$('#exp-go').onclick = () => (expRunning ? api('/api/export/cancel').catch(() => {}) : expGo());
+
+function expSay(msg, err) {
+  $('#exp-run').textContent = msg; $('#exp-run').className = err ? 'err' : '';
+  $('#exp-stat').textContent = msg; $('#exp-stat').className = err ? 'err' : '';
+}
+function expPollStart() { clearInterval(expPoll); expPoll = setInterval(expTick, 1200); expTick(); }
+
+async function expTick() {
+  let j;
+  try { j = await api('/api/export/progress'); } catch (e) { return; }
+  const pct = j.total ? 100 * j.done / j.total : 0;
+  $('#exp-bar i').style.width = pct.toFixed(1) + '%';
+  expRunning = !!j.running;
+  $('#exp-go').textContent = expRunning ? 'Stop' : 'Export';
+  $('#exp-go').disabled = false;
+  if (expRunning) {
+    const eta = j.eta_s > 90 ? `${Math.round(j.eta_s / 60)} min left` : `${Math.round(j.eta_s)} s left`;
+    expSay(`${j.done} of ${j.total}${j.per_s ? `  ·  ${j.per_s.toFixed(1)} s each  ·  ${eta}` : ''}`
+      + (j.note ? `  ·  ${j.note}` : '') + (j.failed ? `  ·  ${j.failed} failed` : ''));
+    return;
+  }
+  clearInterval(expPoll); expPoll = null;
+  if (j.error) { expSay(j.error, true); return; }
+  if (!j.total) return;
+  const done = `${j.done} option${j.done === 1 ? '' : 's'} in ${(j.seconds / 60).toFixed(1)} min`
+    + (j.failed ? `, ${j.failed} failed` : '') + (j.cancelled ? ' (stopped)' : '');
+  expSay(done + `  ·  ${j.out}`);
+  if (j.zip) {
+    const a = document.createElement('a');
+    a.href = '/api/export/zip'; a.textContent = ' download .zip'; a.style.marginLeft = '8px';
+    $('#exp-run').appendChild(a);
+  }
+}
+// pick up a run that is still going from a previous visit to the page
+api('/api/export/progress').then((j) => { if (j.running) { expRunning = true; expPollStart(); } }).catch(() => {});
+
+(async () => {
+  await refreshSnapshots();
+  applyState(await api('/api/state'));
+})();
+</script>
+</body>
+</html>
