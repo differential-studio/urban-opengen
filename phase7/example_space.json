@@ -1,0 +1,40 @@
+{
+ "engine": "gan",
+ "server": "http://127.0.0.1:5000",
+ "out": "C:/opengan/spaces/run01",
+ "lut": "C:/opengan/dataset128_sdf/height_lut.json",
+ "lat": 41.39,
+ "lon": 2.17,
+ "variants": 3,
+ "fixed": {
+  "city_a": 6,
+  "city_b": 40,
+  "psi": 1.0,
+  "mix": 0.0
+ },
+ "parameters": {
+  "target:far": {
+   "min": 1.5,
+   "max": 4.0,
+   "steps": 4
+  },
+  "target:green_pct": {
+   "min": 5,
+   "max": 25,
+   "steps": 3
+  },
+  "city_mix": {
+   "values": [
+    0.0,
+    0.5,
+    1.0
+   ]
+  }
+ },
+ "analysis": {
+  "days": [
+   "equinox",
+   "winter"
+  ]
+ }
+}
