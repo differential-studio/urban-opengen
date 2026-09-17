@@ -1,0 +1,107 @@
+{
+ "real_median": {
+  "far_proxy": 0.6166,
+  "coverage_pct": 14.8682,
+  "green_pct": 0.5005,
+  "street_pct": 15.2405,
+  "mean_height_m": 12.1649,
+  "max_height_m": 15.7677,
+  "building_count": 29.0,
+  "mean_footprint_m2": 546.875,
+  "street_length_m": 4373.1128,
+  "intersections": 45.0,
+  "block_count": 24.0
+ },
+ "generated_median": {
+  "000840": {
+   "far_proxy": 0.6020778204805108,
+   "coverage_pct": 14.6728515625,
+   "green_pct": 0.0,
+   "street_pct": 16.27197265625,
+   "mean_height_m": 11.780816904098732,
+   "max_height_m": 18.24516129032258,
+   "building_count": 22.0,
+   "mean_footprint_m2": 805.72509765625,
+   "street_length_m": 3665.1446369127725,
+   "intersections": 46.0,
+   "block_count": 11.0
+  },
+  "001600": {
+   "far_proxy": 0.6219495547715054,
+   "coverage_pct": 16.0064697265625,
+   "green_pct": 0.0,
+   "street_pct": 16.1407470703125,
+   "mean_height_m": 11.963075534972024,
+   "max_height_m": 17.006451612903227,
+   "building_count": 23.0,
+   "mean_footprint_m2": 796.2335324754902,
+   "street_length_m": 3873.8868574652984,
+   "intersections": 48.0,
+   "block_count": 12.0
+  },
+  "002640": {
+   "far_proxy": 0.5893155661962366,
+   "coverage_pct": 14.8468017578125,
+   "green_pct": 0.0,
+   "street_pct": 15.4937744140625,
+   "mean_height_m": 11.875234480889128,
+   "max_height_m": 16.387096774193548,
+   "building_count": 20.0,
+   "mean_footprint_m2": 781.0329861111111,
+   "street_length_m": 3521.2724330271444,
+   "intersections": 39.0,
+   "block_count": 12.0
+  }
+ },
+ "distance": {
+  "000840": {
+   "far_proxy": 0.048962111769105233,
+   "coverage_pct": 0.07464057526433106,
+   "green_pct": 0.14466701743061022,
+   "street_pct": 0.1126314938202191,
+   "mean_height_m": 0.22070861508556755,
+   "max_height_m": 0.2164765875518098,
+   "building_count": 0.3398565844385237,
+   "mean_footprint_m2": 0.09641900660811227,
+   "street_length_m": 0.4160571996246181,
+   "intersections": 0.12723712811003224,
+   "block_count": 0.7503071883467752
+  },
+  "001600": {
+   "far_proxy": 0.04401887503953984,
+   "coverage_pct": 0.08830785479303198,
+   "green_pct": 0.20736193007630088,
+   "street_pct": 0.10837428359782185,
+   "mean_height_m": 0.13049173982188123,
+   "max_height_m": 0.14067511710770758,
+   "building_count": 0.3246747788679185,
+   "mean_footprint_m2": 0.10536663020823966,
+   "street_length_m": 0.3359978176573818,
+   "intersections": 0.11432703295991982,
+   "block_count": 0.6769389322234157
+  },
+  "002640": {
+   "far_proxy": 0.05134314576587044,
+   "coverage_pct": 0.028378935639026933,
+   "green_pct": 0.10176549053724235,
+   "street_pct": 0.07201574250443539,
+   "mean_height_m": 0.14525062707132735,
+   "max_height_m": 0.1997765667086366,
+   "building_count": 0.3595446659646445,
+   "mean_footprint_m2": 0.14690979741455873,
+   "street_length_m": 0.41741346631591486,
+   "intersections": 0.1326041825781623,
+   "block_count": 0.6581536939631657
+  }
+ },
+ "mean_distance": {
+  "000840": 0.23163304618633676,
+  "001600": 0.20695772657755993,
+  "002640": 0.2102869376784532
+ },
+ "city_coverage_mae": {
+  "000840": 3.888186621093751,
+  "001600": 3.3525581217447913,
+  "002640": 3.6513731770833338
+ }
+}
