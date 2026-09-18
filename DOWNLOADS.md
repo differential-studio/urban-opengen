@@ -19,7 +19,7 @@ out of the original run almost empty and was replaced afterwards with the v2 ren
 city, downsampled to match. So the GAN was trained with São Paulo effectively missing. If
 you are reproducing that training, this is the set you need, and that is the one difference.
 
-    <https://drive.google.com/drive/folders/1zt-Uuqrdzz14QmBHFDgNJ-sq8T2ZjdVZ?usp=sharing>
+    https://drive.google.com/drive/folders/1zt-Uuqrdzz14QmBHFDgNJ-sq8T2ZjdVZ?usp=sharing
 
 Licence: Open Database License 1.0, © OpenStreetMap contributors. See `LICENSE-DATA.md`.
 
@@ -34,7 +34,7 @@ grey level carrying height, streets in red, planted ground in green, everything 
 Every city was rendered by the same code with the same conventions, which is the point of
 it. Opportunistic crops from different sources cannot be compared to each other; these can.
 
-    <https://drive.google.com/drive/folders/1d6CEbB7EkV2rp0jqudk6_2RlZFDc48DY?usp=sharing>
+    https://drive.google.com/drive/folders/1d6CEbB7EkV2rp0jqudk6_2RlZFDc48DY?usp=sharing
 
 Also in the download: the whole 10 km window per city as one 3200 by 3200 raster, the
 per-city georeference (`<City>_grid.json`, centre, CRS and per-tile coordinates), and
@@ -52,7 +52,7 @@ and it rebuilds the area so that the streets and blocks continue into the surrou
 fabric. The same weights work from 300 m to 800 m windows, because the scale goes into the
 network as part of the condition.
 
-    <https://drive.google.com/drive/folders/19MTAnj_ZyVp2yGEHh6WNb9v8aumvkApo?usp=sharing>
+    https://drive.google.com/drive/folders/19MTAnj_ZyVp2yGEHh6WNb9v8aumvkApo?usp=sharing
 
 Licence: Creative Commons Attribution 4.0. Commercial use is fine, credit is required.
 See `LICENSE-MODELS.md`.
@@ -64,7 +64,7 @@ on the sixty city labels. Draws a whole 400 m tile from a latent vector. Latent 
 fitted afterwards to the measured metrics turn floor area ratio, coverage, green share and
 street share into sliders that move the real quantity.
 
-    <https://drive.google.com/drive/folders/149r6eHQ5I96zi5G-f5zJgcH3W0o_xU4y?usp=sharing>
+    https://drive.google.com/drive/folders/149r6eHQ5I96zi5G-f5zJgcH3W0o_xU4y?usp=sharing
 
 Licence: non-commercial research and educational use only. These weights were produced
 with NVIDIA's stylegan3 repository, whose licence covers works derived from it. Credit
