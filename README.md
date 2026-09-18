@@ -2,7 +2,10 @@
 
 Open generative models of urban morphology, trained on sixty cities across every
 continent. Open code, open data, open weights, and everything here runs on one consumer
-GPU.
+GPU. 
+
+The YouTube video below walks through the full pipeline in a clear, practical way: how we gather and prepare urban data, turn it into a consistent training dataset, train the models, and use the resulting generators to explore new urban scenarios:
+https://www.youtube.com/watch?v=gjkFAR7kbEY
 
 There are two models.
 
