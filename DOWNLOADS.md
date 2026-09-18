@@ -52,7 +52,7 @@ and it rebuilds the area so that the streets and blocks continue into the surrou
 fabric. The same weights work from 300 m to 800 m windows, because the scale goes into the
 network as part of the condition.
 
-    <INPAINTER LINK>
+    <https://drive.google.com/drive/folders/19MTAnj_ZyVp2yGEHh6WNb9v8aumvkApo?usp=sharing>
 
 Licence: Creative Commons Attribution 4.0. Commercial use is fine, credit is required.
 See `LICENSE-MODELS.md`.
@@ -64,7 +64,7 @@ on the sixty city labels. Draws a whole 400 m tile from a latent vector. Latent 
 fitted afterwards to the measured metrics turn floor area ratio, coverage, green share and
 street share into sliders that move the real quantity.
 
-    <GENERATOR LINK>
+    <https://drive.google.com/drive/folders/149r6eHQ5I96zi5G-f5zJgcH3W0o_xU4y?usp=sharing>
 
 Licence: non-commercial research and educational use only. These weights were produced
 with NVIDIA's stylegan3 repository, whose licence covers works derived from it. Credit
