@@ -11,11 +11,15 @@ import sys, math
 import numpy as np
 from scipy import ndimage
 sys.path.insert(0, '..'); sys.path.insert(0, '.')
+from pathlib import Path
 from tile_codec import HeightLUT, grey_to_metres
 import vectorize as V, analysis as A
 
-lut = HeightLUT.load('/mnt/user-data/uploads/opengan/dataset128_sdf/height_lut.json')
-real = np.load('../data/real_v2.npz')
+# the LUT and the tile arrays these scripts read, found relative to the repository
+# rather than to wherever you happen to be standing when you run them
+ROOT = Path(__file__).resolve().parent.parent
+lut = HeightLUT.load(ROOT / 'assets' / 'height_lut.json')
+real = np.load(ROOT / 'data' / 'real_v2.npz')
 LAT = {'Barcelona': 41.39, 'Paris': 48.86, 'Berlin': 52.52, 'Istanbul': 41.01, 'Osaka': 34.69,
        'Jakarta': -6.21, 'Cairo': 30.04, 'Los_Angeles': 34.05, 'Buenos_Aires': -34.61}
 PX = 2.0

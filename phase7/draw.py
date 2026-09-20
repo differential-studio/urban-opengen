@@ -2,14 +2,18 @@
 import sys
 import numpy as np
 sys.path.insert(0, '..'); sys.path.insert(0, '.')
+from pathlib import Path
 import matplotlib; matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.collections import PolyCollection
 from tile_codec import HeightLUT, channels_to_rgb
 import vectorize as V, analysis as A
 
-lut = HeightLUT.load('/mnt/user-data/uploads/opengan/dataset128_sdf/height_lut.json')
-real = np.load('../data/real_v2.npz')
+# the LUT and the tile arrays these scripts read, found relative to the repository
+# rather than to wherever you happen to be standing when you run them
+ROOT = Path(__file__).resolve().parent.parent
+lut = HeightLUT.load(ROOT / 'assets' / 'height_lut.json')
+real = np.load(ROOT / 'data' / 'real_v2.npz')
 TILES = [('Barcelona_411', 41.39, 'Barcelona Eixample'), ('Los_Angeles_312', 34.05, 'Los Angeles downtown'),
          ('Berlin_312', 52.52, 'Berlin, park edge'), ('Osaka_312', 34.69, 'Osaka towers')]
 
