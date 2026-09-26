@@ -302,7 +302,7 @@ Findings from rendering the 60 (see also `audit_osm.py`):
   height loss for untagged pixels, or to accept it and say so; not decided yet.
 * **Some cities are simply not mapped.** Luanda returned 1,787 buildings and 8,758
   street segments: the network is there, the buildings are not. Re-fetching cannot
-  invent them; such cities are dropped.
+  invent them. Luanda is in the release as rendered, and is the first city to replace.
 * **The Grasshopper set was coarser than it looked.** The same tiles from OSM carry 77
   to 118 distinct height levels against 12 to 24 in the old renders.
 
